@@ -18,7 +18,7 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         children: [
           // ── Globale Halbjahresgewichtung ──────────────────────────────────
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Globale Halbjahres-Gewichtung',
             subtitle: 'Gilt für alle Fächer ohne individuelle Einstellung',
           ),
@@ -39,7 +39,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           const Divider(height: 32),
           // ── Fach-spezifische Gewichtung ───────────────────────────────────
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Fach-individuelle Gewichtung',
             subtitle: 'Überschreibt die globale Einstellung für einzelne Fächer',
           ),
@@ -66,7 +66,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           const Divider(height: 32),
           // ── Fächer verwalten ──────────────────────────────────────────────
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Fächer verwalten',
           ),
           const SizedBox(height: 8),
@@ -293,38 +293,16 @@ class _SubjectsManager extends ConsumerWidget {
   }
 
   void _showAddSubjectDialog(BuildContext context, WidgetRef ref) {
-    final ctrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Neues Fach'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Fachname',
-            hintText: 'z.B. Mathematik',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final name = ctrl.text.trim();
-              if (name.isEmpty) return;
-              await ref
-                  .read(subjectsNotifierProvider.notifier)
-                  .addSubject(name);
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Erstellen'),
-          ),
-        ],
+      builder: (_) => _AddSubjectDialog(
+        onSave: (name) async {
+          await ref
+              .read(subjectsNotifierProvider.notifier)
+              .addSubject(name);
+        },
       ),
-    ).then((_) => ctrl.dispose());
+    );
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, Subject subject) {
@@ -352,6 +330,80 @@ class _SubjectsManager extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── _AddSubjectDialog ─────────────────────────────────────────────────────────
+// StatefulWidget ensures the TextEditingController is disposed at the correct
+// time (when the dialog widget is fully removed from the tree), not prematurely
+// during the exit animation.
+class _AddSubjectDialog extends StatefulWidget {
+  final Future<void> Function(String name) onSave;
+  const _AddSubjectDialog({required this.onSave});
+
+  @override
+  State<_AddSubjectDialog> createState() => _AddSubjectDialogState();
+}
+
+class _AddSubjectDialogState extends State<_AddSubjectDialog> {
+  late final TextEditingController _ctrl;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Neues Fach'),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'Fachname',
+          hintText: 'z.B. Mathematik',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: _loading
+              ? null
+              : () async {
+                  final name = _ctrl.text.trim();
+                  if (name.isEmpty) return;
+                  setState(() => _loading = true);
+                  try {
+                    await widget.onSave(name);
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Fehler: Konnte nicht gespeichert werden'),
+                        ),
+                      );
+                    }
+                  } finally {
+                    if (mounted) setState(() => _loading = false);
+                  }
+                },
+          child: const Text('Erstellen'),
+        ),
+      ],
     );
   }
 }

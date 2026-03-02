@@ -180,7 +180,7 @@ class _StudentsTab extends StatelessWidget {
       error: (e, _) => Center(child: Text('Fehler: $e')),
       data: (students) {
         if (students.isEmpty) {
-          return _EmptyTabState(
+          return const _EmptyTabState(
             icon: Icons.person_add_outlined,
             title: 'Noch keine Schüler',
             subtitle: 'Tippe auf "Schüler", um den ersten Schüler hinzuzufügen.',
@@ -398,7 +398,7 @@ class _SubjectsTab extends StatelessWidget {
       error: (e, _) => Center(child: Text('Fehler: $e')),
       data: (subjects) {
         if (subjects.isEmpty) {
-          return _EmptyTabState(
+          return const _EmptyTabState(
             icon: Icons.menu_book_outlined,
             title: 'Keine Fächer zugewiesen',
             subtitle: 'Tippe auf "Fach zuweisen", um Fächer hinzuzufügen.',
