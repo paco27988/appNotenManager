@@ -27,57 +27,59 @@ class ClassDetailScreen extends ConsumerWidget {
           return const Scaffold(
               body: Center(child: Text('Klasse nicht gefunden')));
         }
-        return Scaffold(
-        appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(cls.name),
-              Text(
-                cls.schoolYear,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.grading),
-              tooltip: 'Zeugnis',
-              onPressed: () => context.push('/class/$classId/report'),
-            ),
-          ],
-        ),
-        body: DefaultTabController(
+        return DefaultTabController(
           length: 2,
-          child: Column(
-            children: [
-              const TabBar(
-                tabs: [
-                  Tab(icon: Icon(Icons.people), text: 'Schüler'),
-                  Tab(icon: Icon(Icons.book), text: 'Fächer'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
+          child: Builder(
+            builder: (tabContext) => Scaffold(
+              appBar: AppBar(
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _StudentsTab(
-                      classId: classId,
-                      studentsAsync: studentsAsync,
-                      ref: ref,
-                    ),
-                    _SubjectsTab(
-                      classId: classId,
-                      classSubjectsAsync: classSubjectsAsync,
-                      ref: ref,
+                    Text(cls.name),
+                    Text(
+                      cls.schoolYear,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
                     ),
                   ],
                 ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.grading),
+                    tooltip: 'Zeugnis',
+                    onPressed: () => context.push('/class/$classId/report'),
+                  ),
+                ],
               ),
-            ],
+              body: Column(
+                children: [
+                  const TabBar(
+                    tabs: [
+                      Tab(icon: Icon(Icons.people), text: 'Schüler'),
+                      Tab(icon: Icon(Icons.book), text: 'Fächer'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _StudentsTab(
+                          classId: classId,
+                          studentsAsync: studentsAsync,
+                          ref: ref,
+                        ),
+                        _SubjectsTab(
+                          classId: classId,
+                          classSubjectsAsync: classSubjectsAsync,
+                          ref: ref,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              floatingActionButton: _buildFab(tabContext, ref),
+            ),
           ),
-        ),
-        floatingActionButton: _buildFab(context, ref),
-      );
+        );
       },
     );
   }
