@@ -8,6 +8,7 @@ import '../features/report/screens/report_screen.dart';
 import '../features/categories/screens/categories_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/backup/screens/backup_screen.dart';
+import '../features/subjects/screens/subject_detail_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -73,6 +74,18 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+      routes: [
+        GoRoute(
+          path: 'subject/:id',
+          builder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '');
+            if (id == null) {
+              return const Scaffold(body: Center(child: Text('Ungültige Fach-ID')));
+            }
+            return SubjectDetailScreen(subjectId: id);
+          },
+        ),
+      ],
     ),
     GoRoute(
       path: '/backup',

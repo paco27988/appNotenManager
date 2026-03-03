@@ -11,9 +11,9 @@ final classesStreamProvider = StreamProvider<List<SchoolClass>>((ref) {
 });
 
 final classByIdProvider =
-    FutureProvider.family<SchoolClass?, int>((ref, id) async {
+    StreamProvider.family<SchoolClass?, int>((ref, id) {
   final db = ref.watch(databaseProvider);
-  return db.classesDao.getById(id);
+  return db.classesDao.watchById(id);
 });
 
 final classSubjectsProvider =
@@ -74,11 +74,9 @@ class ClassesNotifier extends AsyncNotifier<List<SchoolClass>> {
 
   Future<void> assignSubject(int classId, int subjectId) async {
     await _db.classesDao.assignSubject(classId, subjectId);
-    ref.invalidate(classSubjectsProvider(classId));
   }
 
   Future<void> removeSubject(int classId, int subjectId) async {
     await _db.classesDao.removeSubject(classId, subjectId);
-    ref.invalidate(classSubjectsProvider(classId));
   }
 }

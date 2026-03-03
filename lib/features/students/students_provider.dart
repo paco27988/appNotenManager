@@ -36,7 +36,6 @@ class StudentsNotifier extends AsyncNotifier<void> {
         lastName: lastName,
       ),
     );
-    ref.invalidate(studentsByClassProvider(classId));
   }
 
   Future<void> updateStudent(
@@ -53,12 +52,12 @@ class StudentsNotifier extends AsyncNotifier<void> {
         lastName: Value(lastName),
       ),
     );
-    ref.invalidate(studentsByClassProvider(classId));
   }
 
   Future<void> deleteStudent(int id, int classId) async {
-    await _db.gradesDao.deleteByStudent(id);
-    await _db.studentsDao.deleteById(id);
-    ref.invalidate(studentsByClassProvider(classId));
+    await _db.transaction(() async {
+      await _db.gradesDao.deleteByStudent(id);
+      await _db.studentsDao.deleteById(id);
+    });
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../settings/settings_provider.dart';
 import '../../subjects/subjects_provider.dart';
 import '../../../core/database/app_database.dart';
@@ -25,7 +26,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           globalSettingAsync.when(
             loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Fehler: $e'),
+            error: (e, _) => const Text('Ein Fehler ist aufgetreten'),
             data: (setting) => _SemesterWeightEditor(
               firstHalf: setting?.firstHalfWeight ?? 50.0,
               secondHalf: setting?.secondHalfWeight ?? 50.0,
@@ -46,7 +47,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           subjectsAsync.when(
             loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Fehler: $e'),
+            error: (e, _) => const Text('Ein Fehler ist aufgetreten'),
             data: (subjects) {
               if (subjects.isEmpty) {
                 return const Padding(
@@ -72,7 +73,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           subjectsAsync.when(
             loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Fehler: $e'),
+            error: (e, _) => const Text('Ein Fehler ist aufgetreten'),
             data: (subjects) => _SubjectsManager(subjects: subjects),
           ),
         ],
@@ -140,6 +141,14 @@ class _SemesterWeightEditorState extends State<_SemesterWeightEditor> {
   }
 
   @override
+  void didUpdateWidget(_SemesterWeightEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.firstHalf != widget.firstHalf) {
+      _w1 = widget.firstHalf;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final w2 = 100.0 - _w1;
     return Card(
@@ -161,17 +170,7 @@ class _SemesterWeightEditorState extends State<_SemesterWeightEditor> {
               divisions: 8,
               label: '${_w1.toStringAsFixed(0)} / ${w2.toStringAsFixed(0)}',
               onChanged: (v) => setState(() => _w1 = v),
-              onChangeEnd: (v) async {
-                await widget.onChanged(v, 100 - v);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Einstellung gespeichert'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                }
-              },
+              onChangeEnd: (v) => widget.onChanged(v, 100 - v),
             ),
           ],
         ),
@@ -193,9 +192,20 @@ class _SubjectSettingTile extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ExpansionTile(
         title: Text(subject.name),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.tune),
+              tooltip: 'Kategorien konfigurieren',
+              onPressed: () =>
+                  context.push('/settings/subject/${subject.id}'),
+            ),
+          ],
+        ),
         subtitle: settingAsync.when(
           loading: () => const Text('...'),
-          error: (e, _) => Text('Fehler: $e'),
+          error: (e, _) => const Text('Fehler beim Laden'),
           data: (setting) {
             if (setting == null) {
               final g = globalAsync.valueOrNull;
@@ -214,7 +224,7 @@ class _SubjectSettingTile extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: settingAsync.when(
               loading: () => const LinearProgressIndicator(),
-              error: (e, _) => Text('Fehler: $e'),
+              error: (e, _) => const Text('Ein Fehler ist aufgetreten'),
               data: (setting) {
                 final globalW1 =
                     globalAsync.valueOrNull?.firstHalfWeight ?? 50.0;
@@ -310,7 +320,10 @@ class _SubjectsManager extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Fach löschen'),
-        content: Text('Fach "${subject.name}" löschen?'),
+        content: Text(
+          'Fach "${subject.name}" löschen?\n\n'
+          'Achtung: Alle Noten dieses Fachs werden ebenfalls gelöscht.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -369,6 +382,7 @@ class _AddSubjectDialogState extends State<_AddSubjectDialog> {
       content: TextField(
         controller: _ctrl,
         autofocus: true,
+        maxLength: 100,
         decoration: const InputDecoration(
           labelText: 'Fachname',
           hintText: 'z.B. Mathematik',

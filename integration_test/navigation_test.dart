@@ -51,7 +51,7 @@ void main() {
     // ─── Backup ───────────────────────────────────────────────────────────
     await tester.tap(find.byTooltip('Backup'));
     await tester.pumpAndSettle();
-    expect(find.text('Backup & Restore'), findsOneWidget);
+    expect(find.text('Datensicherung'), findsOneWidget);
 
     await goBack(tester);
     expect(find.text('Meine Klassen'), findsOneWidget);

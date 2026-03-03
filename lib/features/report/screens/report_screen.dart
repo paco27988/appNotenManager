@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../classes/classes_provider.dart';
 import '../../students/students_provider.dart';
 import '../../grades/grades_provider.dart';
-import '../../categories/categories_provider.dart';
+import '../../subjects/subject_category_overrides_provider.dart';
 import '../../settings/settings_provider.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/grade_calculator.dart';
@@ -25,7 +25,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final classAsync = ref.watch(classByIdProvider(widget.classId));
     final studentsAsync = ref.watch(studentsByClassProvider(widget.classId));
     final subjectsAsync = ref.watch(classSubjectsProvider(widget.classId));
-    final categoriesAsync = ref.watch(categoriesStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -53,58 +52,52 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             child: studentsAsync.when(
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Fehler: $e')),
+              error: (e, _) => const Center(child: Text('Ein Fehler ist aufgetreten')),
               data: (students) => subjectsAsync.when(
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Fehler: $e')),
-                data: (subjects) => categoriesAsync.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Fehler: $e')),
-                  data: (categories) {
-                    if (students.isEmpty) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 40),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.people_outline,
-                                size: 48,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withOpacity(0.4),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Keine Schüler in dieser Klasse',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
+                error: (e, _) => const Center(child: Text('Ein Fehler ist aufgetreten')),
+                data: (subjects) {
+                  if (students.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 48,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.4),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Keine Schüler in dieser Klasse',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                      );
-                    }
-                    final sorted = [...students]..sort(
-                        (a, b) => '${a.lastName} ${a.firstName}'
-                            .compareTo('${b.lastName} ${b.firstName}'),
-                      );
-                    return _ReportTable(
-                      students: sorted,
-                      subjects: subjects,
-                      categories: categories,
-                      mode: _mode,
-                      classId: widget.classId,
+                      ),
                     );
-                  },
-                ),
+                  }
+                  final sorted = [...students]..sort(
+                      (a, b) => '${a.lastName} ${a.firstName}'
+                          .compareTo('${b.lastName} ${b.firstName}'),
+                    );
+                  return _ReportTable(
+                    students: sorted,
+                    subjects: subjects,
+                    mode: _mode,
+                    classId: widget.classId,
+                  );
+                },
               ),
             ),
           ),
@@ -117,14 +110,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 class _ReportTable extends ConsumerWidget {
   final List<Student> students;
   final List<Subject> subjects;
-  final List<GradeCategory> categories;
   final int mode; // 0=HJ1, 1=HJ2, 2=Yearly
   final int classId;
 
   const _ReportTable({
     required this.students,
     required this.subjects,
-    required this.categories,
     required this.mode,
     required this.classId,
   });
@@ -192,7 +183,6 @@ class _ReportTable extends ConsumerWidget {
                         _GradeCell(
                           studentId: student.id,
                           subjectId: subject.id,
-                          categories: categories,
                           mode: mode,
                         ),
                       ),
@@ -210,13 +200,11 @@ class _ReportTable extends ConsumerWidget {
 class _GradeCell extends ConsumerWidget {
   final int studentId;
   final int subjectId;
-  final List<GradeCategory> categories;
   final int mode;
 
   const _GradeCell({
     required this.studentId,
     required this.subjectId,
-    required this.categories,
     required this.mode,
   });
 
@@ -227,6 +215,7 @@ class _GradeCell extends ConsumerWidget {
     final globalSettingAsync = ref.watch(globalSemesterSettingProvider);
     final subjectSettingAsync =
         ref.watch(subjectSemesterSettingProvider(subjectId));
+    final categoriesAsync = ref.watch(effectiveCategoriesProvider(subjectId));
 
     return gradesAsync.when(
       loading: () => const SizedBox(
@@ -236,6 +225,7 @@ class _GradeCell extends ConsumerWidget {
       ),
       error: (e, _) => const Text('!'),
       data: (grades) {
+        final categories = categoriesAsync.valueOrNull ?? [];
         final subjectSetting = subjectSettingAsync.valueOrNull;
         final globalSetting = globalSettingAsync.valueOrNull;
         final w1 = subjectSetting?.firstHalfWeight ??
@@ -297,8 +287,8 @@ class _GradeCell extends ConsumerWidget {
 
   Color? _gradeColor(double? grade, BuildContext context) {
     if (grade == null) return Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
-    if (grade <= 2.5) return const Color(0xFF2E7D32); // green[800] – sufficient contrast
-    if (grade <= 4.0) return const Color(0xFFE65100); // deepOrange[900] – sufficient contrast
+    if (grade <= 2.33) return const Color(0xFF2E7D32); // green[800] – 1+ through 2-
+    if (grade <= 4.33) return const Color(0xFFE65100); // deepOrange[900] – 3+ through 4-
     return Theme.of(context).colorScheme.error;
   }
 }

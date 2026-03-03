@@ -9,6 +9,9 @@ class ClassesDao extends DatabaseAccessor<AppDatabase> with _$ClassesDaoMixin {
 
   Stream<List<SchoolClass>> watchAll() => select(classes).watch();
 
+  Stream<SchoolClass?> watchById(int id) =>
+      (select(classes)..where((c) => c.id.equals(id))).watchSingleOrNull();
+
   Future<List<SchoolClass>> getAll() => select(classes).get();
 
   Future<SchoolClass?> getById(int id) =>

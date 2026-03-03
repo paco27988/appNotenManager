@@ -44,6 +44,9 @@ class GradesDao extends DatabaseAccessor<AppDatabase> with _$GradesDaoMixin {
   Future<int> deleteBySubject(int subjectId) =>
       (delete(grades)..where((t) => t.subjectId.equals(subjectId))).go();
 
+  Future<int> deleteByCategory(int categoryId) =>
+      (delete(grades)..where((t) => t.categoryId.equals(categoryId))).go();
+
   Future<int> deleteByStudentSubject(int studentId, int subjectId) =>
       (delete(grades)
             ..where(

@@ -37,7 +37,6 @@ class CategoriesNotifier extends AsyncNotifier<List<GradeCategory>> {
       ),
     );
     ref.invalidateSelf();
-    ref.invalidate(categoriesStreamProvider);
   }
 
   Future<void> updateCategory(
@@ -57,13 +56,15 @@ class CategoriesNotifier extends AsyncNotifier<List<GradeCategory>> {
       ),
     );
     ref.invalidateSelf();
-    ref.invalidate(categoriesStreamProvider);
   }
 
   Future<void> deleteCategory(int id) async {
-    await _db.categoriesDao.deleteById(id);
+    await _db.transaction(() async {
+      await _db.gradesDao.deleteByCategory(id);
+      await _db.subjectCategoryOverridesDao.deleteForCategory(id);
+      await _db.categoriesDao.deleteById(id);
+    });
     ref.invalidateSelf();
-    ref.invalidate(categoriesStreamProvider);
   }
 
   /// Total weight of all categories – must equal 100 for correct calculation.

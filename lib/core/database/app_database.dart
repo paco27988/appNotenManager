@@ -11,6 +11,7 @@ import 'daos/subjects_dao.dart';
 import 'daos/grades_dao.dart';
 import 'daos/categories_dao.dart';
 import 'daos/settings_dao.dart';
+import 'daos/subject_category_overrides_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -58,6 +59,7 @@ class Grades extends Table {
   IntColumn get subjectId => integer().references(Subjects, #id)();
   IntColumn get categoryId => integer().references(GradeCategories, #id)();
   RealColumn get value => real()(); // 1.0–6.0
+  RealColumn get factor => real().withDefault(const Constant(1.0))(); // Gewichtungsfaktor z.B. 0.5, 1.0, 2.0
   IntColumn get semester => integer()(); // 1 or 2
   DateTimeColumn get date => dateTime()();
   TextColumn get comment => text().withDefault(const Constant(''))();
@@ -71,6 +73,16 @@ class SemesterSettings extends Table {
   RealColumn get secondHalfWeight => real().withDefault(const Constant(50.0))();
 }
 
+class SubjectCategoryOverrides extends Table {
+  IntColumn get subjectId => integer().references(Subjects, #id)();
+  IntColumn get categoryId => integer().references(GradeCategories, #id)();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  RealColumn get weightOverride => real().nullable()(); // null = use global weight
+
+  @override
+  Set<Column> get primaryKey => {subjectId, categoryId};
+}
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 
 @DriftDatabase(
@@ -82,6 +94,7 @@ class SemesterSettings extends Table {
     GradeCategories,
     Grades,
     SemesterSettings,
+    SubjectCategoryOverrides,
   ],
   daos: [
     ClassesDao,
@@ -90,6 +103,7 @@ class SemesterSettings extends Table {
     GradesDao,
     CategoriesDao,
     SettingsDao,
+    SubjectCategoryOverridesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -98,13 +112,19 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _insertDefaults();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.createTable(subjectCategoryOverrides);
+          if (from < 3) {
+            await m.addColumn(grades, grades.factor);
+          }
         },
       );
 
@@ -149,10 +169,14 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     if (kIsWeb) {
       // Web: in-memory for now (full web support needs more setup)
-      return NativeDatabase.memory();
+      return NativeDatabase.memory(setup: (db) {
+        db.execute('PRAGMA foreign_keys = ON');
+      });
     }
-    final dbFolder = await getApplicationDocumentsDirectory();
+    final dbFolder = await getApplicationSupportDirectory();
     final file = File(p.join(dbFolder.path, 'leher_app.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(file, setup: (db) {
+      db.execute('PRAGMA foreign_keys = ON');
+    });
   });
 }

@@ -34,7 +34,9 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: classesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorState(message: e.toString()),
+        error: (e, _) => _ErrorState(
+          onRetry: () => ref.invalidate(classesStreamProvider),
+        ),
         data: (classes) {
           if (classes.isEmpty) {
             return _EmptyClassesState();
@@ -115,8 +117,8 @@ class _EmptyClassesState extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  final String message;
-  const _ErrorState({required this.message});
+  final VoidCallback? onRetry;
+  const _ErrorState({this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -136,14 +138,14 @@ class _ErrorState extends StatelessWidget {
                   .titleMedium
                   ?.copyWith(color: cs.error),
             ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurface.withOpacity(0.6),
-                  ),
-              textAlign: TextAlign.center,
-            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Erneut versuchen'),
+              ),
+            ],
           ],
         ),
       ),
@@ -345,6 +347,7 @@ class _ClassDialogState extends State<_ClassDialog> {
             ),
             autofocus: true,
             textCapitalization: TextCapitalization.none,
+            maxLength: 100,
             onChanged: (_) {
               if (_nameError != null) setState(() => _nameError = null);
             },
@@ -358,6 +361,7 @@ class _ClassDialogState extends State<_ClassDialog> {
               prefixIcon: const Icon(Icons.calendar_today_outlined),
               errorText: _yearError,
             ),
+            maxLength: 20,
             onChanged: (_) {
               if (_yearError != null) setState(() => _yearError = null);
             },

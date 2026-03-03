@@ -20,8 +20,10 @@ class ClassDetailScreen extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => const Scaffold(
-          body: Center(child: Text('Ein Fehler ist aufgetreten'))),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text('Ein Fehler ist aufgetreten')),
+      ),
       data: (cls) {
         if (cls == null) {
           return const Scaffold(
@@ -64,12 +66,10 @@ class ClassDetailScreen extends ConsumerWidget {
                         _StudentsTab(
                           classId: classId,
                           studentsAsync: studentsAsync,
-                          ref: ref,
                         ),
                         _SubjectsTab(
                           classId: classId,
                           classSubjectsAsync: classSubjectsAsync,
-                          ref: ref,
                         ),
                       ],
                     ),
@@ -144,14 +144,12 @@ class _TabAwareFabState extends ConsumerState<_TabAwareFab> {
   }
 
   void _showAddStudentDialog(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(studentsNotifierProvider.notifier);
     showDialog(
       context: context,
       builder: (_) => _StudentDialog(
-        onSave: (firstName, lastName) async {
-          await ref
-              .read(studentsNotifierProvider.notifier)
-              .addStudent(widget.classId, firstName, lastName);
-        },
+        onSave: (firstName, lastName) =>
+            notifier.addStudent(widget.classId, firstName, lastName),
       ),
     );
   }
@@ -164,22 +162,20 @@ class _TabAwareFabState extends ConsumerState<_TabAwareFab> {
   }
 }
 
-class _StudentsTab extends StatelessWidget {
+class _StudentsTab extends ConsumerWidget {
   final int classId;
   final AsyncValue<List<Student>> studentsAsync;
-  final WidgetRef ref;
 
   const _StudentsTab({
     required this.classId,
     required this.studentsAsync,
-    required this.ref,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return studentsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Fehler: $e')),
+      error: (e, _) => const Center(child: Text('Ein Fehler ist aufgetreten')),
       data: (students) {
         if (students.isEmpty) {
           return const _EmptyTabState(
@@ -199,7 +195,7 @@ class _StudentsTab extends StatelessWidget {
           itemCount: sorted.length,
           itemBuilder: (context, i) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _StudentTile(student: sorted[i], classId: classId, ref: ref),
+            child: _StudentTile(student: sorted[i], classId: classId),
           ),
         );
       },
@@ -207,19 +203,17 @@ class _StudentsTab extends StatelessWidget {
   }
 }
 
-class _StudentTile extends StatelessWidget {
+class _StudentTile extends ConsumerWidget {
   final Student student;
   final int classId;
-  final WidgetRef ref;
 
   const _StudentTile({
     required this.student,
     required this.classId,
-    required this.ref,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     return Card(
       child: InkWell(
@@ -232,7 +226,9 @@ class _StudentTile extends StatelessWidget {
               CircleAvatar(
                 backgroundColor: cs.secondaryContainer,
                 child: Text(
-                  student.firstName[0].toUpperCase(),
+                  student.firstName.isNotEmpty
+                      ? student.firstName[0].toUpperCase()
+                      : '?',
                   style: TextStyle(
                     color: cs.onSecondaryContainer,
                     fontWeight: FontWeight.bold,
@@ -252,8 +248,8 @@ class _StudentTile extends StatelessWidget {
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: cs.onSurface.withOpacity(0.6)),
                 onSelected: (v) {
-                  if (v == 'edit') _showEditDialog(context);
-                  if (v == 'delete') _confirmDelete(context);
+                  if (v == 'edit') _showEditDialog(context, ref);
+                  if (v == 'delete') _confirmDelete(context, ref);
                 },
                 itemBuilder: (_) => [
                   const PopupMenuItem(
@@ -284,7 +280,7 @@ class _StudentTile extends StatelessWidget {
     );
   }
 
-  void _showEditDialog(BuildContext context) {
+  void _showEditDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (_) => _StudentDialog(
@@ -299,7 +295,7 @@ class _StudentTile extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context) {
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -356,7 +352,7 @@ class _EmptyTabState extends StatelessWidget {
                 color: cs.surfaceVariant,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 36, color: cs.onSurface.withOpacity(0.5)),
+              child: Icon(icon, size: 36, color: cs.onSurface.withOpacity( 0.5)),
             ),
             const SizedBox(height: 20),
             Text(
@@ -371,7 +367,7 @@ class _EmptyTabState extends StatelessWidget {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurface.withOpacity(0.6),
+                    color: cs.onSurface.withOpacity( 0.6),
                   ),
               textAlign: TextAlign.center,
             ),
@@ -382,22 +378,20 @@ class _EmptyTabState extends StatelessWidget {
   }
 }
 
-class _SubjectsTab extends StatelessWidget {
+class _SubjectsTab extends ConsumerWidget {
   final int classId;
   final AsyncValue<List<Subject>> classSubjectsAsync;
-  final WidgetRef ref;
 
   const _SubjectsTab({
     required this.classId,
     required this.classSubjectsAsync,
-    required this.ref,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return classSubjectsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Fehler: $e')),
+      error: (e, _) => const Center(child: Text('Ein Fehler ist aufgetreten')),
       data: (subjects) {
         if (subjects.isEmpty) {
           return const _EmptyTabState(
@@ -426,11 +420,28 @@ class _SubjectsTab extends StatelessWidget {
                       color: Theme.of(context).colorScheme.error,
                     ),
                     tooltip: 'Fach entfernen',
-                    onPressed: () async {
-                      await ref
-                          .read(classesNotifierProvider.notifier)
-                          .removeSubject(classId, s.id);
-                    },
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Fach entfernen'),
+                        content: Text('Fach "${s.name}" von der Klasse entfernen?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Abbrechen'),
+                          ),
+                          FilledButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              await ref
+                                  .read(classesNotifierProvider.notifier)
+                                  .removeSubject(classId, s.id);
+                            },
+                            child: const Text('Entfernen'),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -458,7 +469,7 @@ class _SubjectPickerDialog extends ConsumerWidget {
         height: 300,
         child: allSubjectsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Fehler: $e'),
+          error: (e, _) => const Text('Fehler beim Laden'),
           data: (allSubjects) {
             final assigned = assignedAsync.valueOrNull ?? [];
             final assignedIds = assigned.map((s) => s.id).toSet();
@@ -489,14 +500,30 @@ class _SubjectPickerDialog extends ConsumerWidget {
                   title: Text(s.name),
                   value: isAssigned,
                   onChanged: (val) async {
+                    final notifier = ref.read(classesNotifierProvider.notifier);
                     if (val == true) {
-                      await ref
-                          .read(classesNotifierProvider.notifier)
-                          .assignSubject(classId, s.id);
+                      await notifier.assignSubject(classId, s.id);
                     } else {
-                      await ref
-                          .read(classesNotifierProvider.notifier)
-                          .removeSubject(classId, s.id);
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Fach entfernen'),
+                          content: Text('Fach "${s.name}" von der Klasse entfernen?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Abbrechen'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Entfernen'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await notifier.removeSubject(classId, s.id);
+                      }
                     }
                   },
                 );
@@ -534,6 +561,8 @@ class _StudentDialogState extends State<_StudentDialog> {
   late final TextEditingController _firstCtrl;
   late final TextEditingController _lastCtrl;
   bool _loading = false;
+  String? _firstError;
+  String? _lastError;
 
   @override
   void initState() {
@@ -559,21 +588,31 @@ class _StudentDialogState extends State<_StudentDialog> {
         children: [
           TextField(
             controller: _firstCtrl,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Vorname',
-              prefixIcon: Icon(Icons.person_outline),
+              prefixIcon: const Icon(Icons.person_outline),
+              errorText: _firstError,
             ),
             autofocus: true,
             textCapitalization: TextCapitalization.words,
+            maxLength: 100,
+            onChanged: (_) {
+              if (_firstError != null) setState(() => _firstError = null);
+            },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           TextField(
             controller: _lastCtrl,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Nachname',
-              prefixIcon: Icon(Icons.badge_outlined),
+              prefixIcon: const Icon(Icons.badge_outlined),
+              errorText: _lastError,
             ),
             textCapitalization: TextCapitalization.words,
+            maxLength: 100,
+            onChanged: (_) {
+              if (_lastError != null) setState(() => _lastError = null);
+            },
           ),
         ],
       ),
@@ -588,7 +627,13 @@ class _StudentDialogState extends State<_StudentDialog> {
               : () async {
                   final first = _firstCtrl.text.trim();
                   final last = _lastCtrl.text.trim();
-                  if (first.isEmpty || last.isEmpty) return;
+                  if (first.isEmpty || last.isEmpty) {
+                    setState(() {
+                      _firstError = first.isEmpty ? 'Pflichtfeld' : null;
+                      _lastError = last.isEmpty ? 'Pflichtfeld' : null;
+                    });
+                    return;
+                  }
                   setState(() => _loading = true);
                   try {
                     await widget.onSave(first, last);

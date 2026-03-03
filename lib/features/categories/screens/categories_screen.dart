@@ -16,7 +16,7 @@ class CategoriesScreen extends ConsumerWidget {
       ),
       body: categoriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Fehler: $e')),
+        error: (e, _) => const Center(child: Text('Ein Fehler ist aufgetreten')),
         data: (categories) {
           final totalWeight =
               categories.fold(0.0, (sum, c) => sum + c.weightPercent);
@@ -310,6 +310,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                 hintText: 'z.B. Referate',
               ),
               autofocus: true,
+              maxLength: 100,
             ),
             const SizedBox(height: 16),
             Text(

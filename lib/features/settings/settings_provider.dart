@@ -25,7 +25,6 @@ class SettingsNotifier extends AsyncNotifier<void> {
 
   Future<void> updateGlobal(double first, double second) async {
     await _db.settingsDao.upsertGlobal(first, second);
-    ref.invalidate(globalSemesterSettingProvider);
   }
 
   Future<void> updateForSubject(
@@ -34,11 +33,9 @@ class SettingsNotifier extends AsyncNotifier<void> {
     double second,
   ) async {
     await _db.settingsDao.upsertForSubject(subjectId, first, second);
-    ref.invalidate(subjectSemesterSettingProvider(subjectId));
   }
 
   Future<void> resetSubjectOverride(int subjectId) async {
     await _db.settingsDao.deleteForSubject(subjectId);
-    ref.invalidate(subjectSemesterSettingProvider(subjectId));
   }
 }

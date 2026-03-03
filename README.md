@@ -28,8 +28,9 @@ Eine Flutter-App zur Verwaltung von Schülernoten, Klassen und Fächern. Entwick
 | **Klassen** | Anlegen, bearbeiten, löschen (mit Schuljahr) |
 | **Schüler** | Hinzufügen, umbenennen, löschen (je Klasse) |
 | **Fächer** | Global verwalten, Klassen zuweisen/entfernen |
-| **Noten** | Erfassen nach Halbjahr, Kategorie, Datum + optionalem Kommentar |
-| **Kategorien** | Frei konfigurierbar (Name, Gewichtung %, Farbe) |
+| **Noten** | Erfassen nach Halbjahr, Kategorie, Datum, Faktor (0,1–10) + optionalem Kommentar |
+| **Kategorien** | Frei konfigurierbar (Name, Gewichtung %, Farbe, Icon) |
+| **Fach-Kategorien** | Pro Fach: Kategorien aktivieren/deaktivieren und Gewichtung überschreiben |
 | **Halbjahresgewichtung** | Global oder fachindividuell (HJ1 / HJ2) |
 | **Zeugnis** | Tabellarische Übersicht pro Klasse (HJ1 / HJ2 / Jahresschnitt) |
 | **Backup** | Export als JSON-Datei, Import mit vollständigem Daten-Restore |
@@ -170,24 +171,39 @@ Während `flutter run` aktiv ist:
 
 ## Tests ausführen
 
-### Unit-Tests
+### Unit- und Datenbank-Tests
 
-Testet die reine Berechnungslogik (`GradeCalculator`) – kein Gerät nötig:
+Testen Berechnungslogik, Datenbank-Kaskaden und Backup-Validierung – kein Gerät nötig:
 
 ```bash
-flutter test test/widget_test.dart
+flutter test
 ```
 
 Erwartete Ausgabe:
 ```
-00:01 +7: All tests passed!
+00:01 +42: All tests passed!
 ```
 
-**Abgedeckte Szenarien (7 Tests):**
+**`test/widget_test.dart` – GradeCalculator (17 Tests):**
+- `calculateSemesterGrade`: leere Liste, eine Note, mehrere Kategorien, Faktor ≠ 1, Semester-Filterung
+- `applySubjectOverrides`: leere Overrides, inaktive Kategorie, Gewichts-Override, gemischt, keine Cross-Contamination
 - Jahresnotenberechnung mit 50/50 und 60/40 Gewichtung
 - Verhalten bei fehlendem Halbjahr (null-Handling)
 - `roundToWholeGrade` – Klammerung auf \[1, 6\]
 - `formatGradeDetail` und `formatGradeReport` – Ausgabeformat
+
+**`test/database_test.dart` – Datenbank-Integrität (11 Tests):**
+- `deleteCategory` → zugehörige Grades werden gelöscht
+- `deleteStudent` → zugehörige Grades werden gelöscht
+- `deleteSubject` → Grades, Settings, Overrides, ClassSubjects werden gelöscht
+- `deleteClass` → Grades der Schüler, Schüler und ClassSubjects werden gelöscht
+- FK-Enforcement: INSERT mit ungültiger FK schlägt fehl
+- Backup-Round-Trip: Export → Import → Daten stimmen überein
+
+**`test/backup_validation_test.dart` – Backup-Validierung (14 Tests):**
+- Gültige Daten, Version > 1, fehlende Felder/Sektionen
+- Typ-Fehler bei IDs, Gewichtungen, Notenwert, isActive, weightOverride
+- `classSubjects`-Validierung (fehlend, falscher Typ)
 
 ### Integration-Tests (E2E)
 
@@ -242,27 +258,30 @@ leherApp/
 │   │   ├── database/
 │   │   │   ├── app_database.dart         # Drift-Schema, DB-Initialisierung
 │   │   │   ├── app_database.g.dart       # (generiert, nicht manuell bearbeiten)
-│   │   │   └── daos/                     # 6 Data Access Objects
+│   │   │   └── daos/                     # 7 Data Access Objects
 │   │   │       ├── classes_dao.dart
 │   │   │       ├── students_dao.dart
 │   │   │       ├── subjects_dao.dart
 │   │   │       ├── grades_dao.dart
 │   │   │       ├── categories_dao.dart
-│   │   │       └── settings_dao.dart
+│   │   │       ├── settings_dao.dart
+│   │   │       └── subject_category_overrides_dao.dart
 │   │   └── utils/
 │   │       └── grade_calculator.dart     # Reine Berechnungslogik (ohne Flutter-Deps)
 │   └── features/
 │       ├── database_provider.dart        # Riverpod-Provider für AppDatabase
 │       ├── classes/                      # HomeScreen + ClassDetailScreen
 │       ├── students/                     # StudentDetailScreen
-│       ├── subjects/                     # subjects_provider (kein eigener Screen)
+│       ├── subjects/                     # SubjectDetailScreen + subject_category_overrides_provider
 │       ├── grades/                       # GradeEntryScreen
 │       ├── categories/                   # CategoriesScreen
 │       ├── settings/                     # SettingsScreen
 │       ├── report/                       # ReportScreen (Zeugnis)
 │       └── backup/                       # BackupScreen + BackupService
 ├── test/
-│   └── widget_test.dart                  # 7 Unit-Tests
+│   ├── widget_test.dart                  # 17 Unit-Tests (GradeCalculator)
+│   ├── database_test.dart               # 11 DB-Integritäts-Tests
+│   └── backup_validation_test.dart      # 14 Backup-Validierungs-Tests
 ├── integration_test/
 │   ├── app_test.dart                     # Vollständiger E2E-Flow
 │   ├── navigation_test.dart              # Screen-Navigation
@@ -281,6 +300,7 @@ leherApp/
 /                                        HomeScreen – Klassenliste
 ├── /categories                          CategoriesScreen
 ├── /settings                            SettingsScreen
+│   └── /settings/subject/:id           SubjectDetailScreen (Fach-Kategorien)
 ├── /backup                              BackupScreen
 └── /class/:id                           ClassDetailScreen (Tabs: Schüler / Fächer)
     ├── /class/:id/report                ReportScreen (Zeugnis)
@@ -317,7 +337,7 @@ UI Widget
 UI (Button-Tap)
   └── ref.read(notifierProvider.notifier).doSomething()
         └── db.someDao.create / update / delete
-              └── ref.invalidate(streamProvider)   ← Stream reagiert automatisch
+              └── Drift-Stream aktualisiert automatisch alle Listener
 ```
 
 ### Wichtige Designentscheidungen
@@ -328,6 +348,10 @@ UI (Button-Tap)
 | Einzelner `testWidgets`-Block pro Integrationstestdatei | Mehrere `app.main()`-Aufrufe erzeugen mehrere Drift-Instanzen → Race Conditions |
 | `_AddSubjectDialog` als `StatefulWidget` | `.then(ctrl.dispose)` feuert beim `Navigator.pop`, aber die Ausgangsanimation läuft noch → `dispose()` im Widget-Lifecycle ist sicherer |
 | `DefaultTabController` oberhalb von `Scaffold` mit `Builder` | `InheritedWidget` propagiert nur abwärts; der FAB-Context muss innerhalb des `DefaultTabController` liegen |
+| Kein `ref.invalidate()` nach Writes | Drift-`StreamProvider` reagieren automatisch auf DB-Änderungen — manuelles Invalidieren erzeugt unnötige Rebuilds |
+| Transaktionen bei Cascade-Deletes | `deleteCategory`, `deleteStudent`, `deleteSubject`, `deleteClass` wrappen alle abhängigen Löschungen in eine Transaktion → atomar und konsistent |
+| `PRAGMA foreign_keys = ON` im `setup`-Callback | SQLite deaktiviert FK-Prüfung standardmäßig; PRAGMA muss bei jeder Verbindung gesetzt werden |
+| `effectiveCategoriesProvider` als `Provider<AsyncValue<...>>` | Kombiniert zwei asynchrone Quellen (Kategorien + Overrides) ohne eigenen AsyncNotifier |
 
 ---
 
@@ -365,7 +389,8 @@ Grades
 ├── studentId     INTEGER  → Students.id
 ├── subjectId     INTEGER  → Subjects.id
 ├── categoryId    INTEGER  → GradeCategories.id
-├── value         REAL     1.0–6.0  (deutsche Notenskala)
+├── value         REAL     0.67–6.0  (1+ bis 6, deutsche Notenskala)
+├── factor        REAL     Standard: 1.0  (Gewichtungsfaktor, 0,1–10)
 ├── semester      INTEGER  1 oder 2
 ├── date          DATETIME
 └── comment       TEXT     optional, Standard: ""
@@ -375,9 +400,17 @@ SemesterSettings
 ├── subjectId        INTEGER  → Subjects.id   (NULL = globale Einstellung)
 ├── firstHalfWeight  REAL     Standard: 50.0
 └── secondHalfWeight REAL     Standard: 50.0
+
+SubjectCategoryOverrides  (fachindividuelle Kategorie-Konfiguration)
+├── subjectId      INTEGER  → Subjects.id       ┐ zusammengesetzter
+├── categoryId     INTEGER  → GradeCategories.id┘ Primärschlüssel
+├── isActive       BOOLEAN  Standard: true       (Kategorie aktiv für dieses Fach)
+└── weightOverride REAL     nullable             (NULL = globale Gewichtung verwenden)
 ```
 
 **Speicherort der SQLite-Datei:** `leher_app.sqlite` im App-Dokumentenverzeichnis der jeweiligen Plattform.
+
+**FK-Enforcement:** `PRAGMA foreign_keys = ON` wird bei jeder DB-Verbindung gesetzt. Cascade-Deletes werden manuell in Transaktionen durchgeführt.
 
 ---
 
@@ -454,11 +487,14 @@ Dateiname: `leher_backup_<Zeitstempel>.json`
   "students":        [ { "id": 1, "classId": 1, "firstName": "Max", "lastName": "Mustermann" } ],
   "subjects":        [ { "id": 1, "name": "Mathematik" } ],
   "classSubjects":   [ { "classId": 1, "subjectId": 1 } ],
-  "categories":      [ { "id": 1, "name": "Mündlich", "weightPercent": 60.0, "colorHex": "#4CAF50" } ],
-  "grades":          [ { "studentId": 1, "subjectId": 1, "categoryId": 1, "value": 2.0, "semester": 1 } ],
-  "semesterSettings":[ { "subjectId": null, "firstHalfWeight": 50.0, "secondHalfWeight": 50.0 } ]
+  "categories":      [ { "id": 1, "name": "Mündlich", "weightPercent": 60.0, "colorHex": "#4CAF50", "icon": "record_voice_over" } ],
+  "grades":          [ { "id": 1, "studentId": 1, "subjectId": 1, "categoryId": 1, "value": 2.0, "factor": 1.0, "semester": 1, "date": "2026-03-01T00:00:00.000", "comment": "" } ],
+  "semesterSettings":[ { "id": 1, "subjectId": null, "firstHalfWeight": 50.0, "secondHalfWeight": 50.0 } ],
+  "subjectCategoryOverrides": [ { "subjectId": 1, "categoryId": 2, "isActive": false, "weightOverride": null } ]
 }
 ```
+
+Die Validierung beim Import prüft Typen aller Felder, Wertebereiche (z.B. `value` 0,67–6,0, `factor` 0,1–10, `weightPercent` 0–100) sowie referenzielle Integrität. Version > 1 wird abgelehnt (Vorwärtskompatibilität).
 
 ---
 
@@ -582,3 +618,13 @@ Die SQLite-Datei löschen und App neu starten:
 | `build_runner` | ^2.4.8 | Code-Generierung (dev) |
 | `drift_dev` | ^2.13.0 | Drift Code-Gen (dev) |
 | `riverpod_generator` | ^2.3.9 | Riverpod Code-Gen (dev) |
+
+### Notenberechnung mit Faktor
+
+Jede Note kann mit einem individuellen Faktor (Standard: 1,0) gewichtet werden. Dieser wird bei der Kategorie-Durchschnittsberechnung berücksichtigt:
+
+```
+Kategorieschnitt = Σ(Note_i × Faktor_i) / Σ Faktor_i
+```
+
+Beispiel: Note 2 (Faktor 2,0) zählt doppelt gegenüber einer Note 4 (Faktor 1,0) → Schnitt 2,67 statt 3,0.

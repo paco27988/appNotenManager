@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../students/students_provider.dart';
 import '../../classes/classes_provider.dart';
 import '../../grades/grades_provider.dart';
-import '../../categories/categories_provider.dart';
+import '../../subjects/subject_category_overrides_provider.dart';
 import '../../settings/settings_provider.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/grade_calculator.dart';
@@ -49,7 +49,7 @@ class StudentDetailScreen extends ConsumerWidget {
         ),
         body: subjectsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Fehler: $e')),
+          error: (e, _) => const Center(child: Text('Ein Fehler ist aufgetreten')),
           data: (subjects) {
             if (subjects.isEmpty) {
               return Center(
@@ -100,7 +100,7 @@ class StudentDetailScreen extends ConsumerWidget {
                       FilledButton.icon(
                         onPressed: () => context.pop(),
                         icon: const Icon(Icons.arrow_back),
-                        label: const Text('Fächer zuweisen'),
+                        label: const Text('Zurück'),
                       ),
                     ],
                   ),
@@ -142,7 +142,7 @@ class _SubjectGradeTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final key = StudentSubjectKey(student.id, subject.id);
     final gradesAsync = ref.watch(gradesByStudentSubjectProvider(key));
-    final categoriesAsync = ref.watch(categoriesStreamProvider);
+    final categoriesAsync = ref.watch(effectiveCategoriesProvider(subject.id));
     final globalSettingAsync = ref.watch(globalSemesterSettingProvider);
     final subjectSettingAsync =
         ref.watch(subjectSemesterSettingProvider(subject.id));
@@ -177,10 +177,10 @@ class _SubjectGradeTile extends ConsumerWidget {
               const SizedBox(height: 12),
               gradesAsync.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (e, _) => Text('Fehler: $e'),
+                error: (e, _) => const Text('Fehler beim Laden'),
                 data: (grades) => categoriesAsync.when(
                   loading: () => const SizedBox.shrink(),
-                  error: (e, _) => Text('Fehler: $e'),
+                  error: (e, _) => const Text('Fehler beim Laden'),
                   data: (categories) {
                     final subjectSetting = subjectSettingAsync.valueOrNull;
                     final globalSetting = globalSettingAsync.valueOrNull;

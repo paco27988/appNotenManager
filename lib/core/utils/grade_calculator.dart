@@ -20,9 +20,9 @@ class GradeCalculator {
     final semesterGrades = grades.where((g) => g.semester == semester).toList();
     if (semesterGrades.isEmpty) return null;
 
-    final Map<int, List<double>> gradesByCategory = {};
+    final Map<int, List<Grade>> gradesByCategory = {};
     for (final g in semesterGrades) {
-      gradesByCategory.putIfAbsent(g.categoryId, () => []).add(g.value);
+      gradesByCategory.putIfAbsent(g.categoryId, () => []).add(g);
     }
 
     double weightedSum = 0;
@@ -31,7 +31,10 @@ class GradeCalculator {
     for (final cat in categories) {
       final catGrades = gradesByCategory[cat.id];
       if (catGrades == null || catGrades.isEmpty) continue;
-      final avg = catGrades.reduce((a, b) => a + b) / catGrades.length;
+      // Gewichteter Schnitt innerhalb der Kategorie (Faktor pro Note)
+      final totalFactor = catGrades.fold(0.0, (s, g) => s + g.factor);
+      final avg = catGrades.fold(0.0, (s, g) => s + g.value * g.factor) /
+          totalFactor;
       weightedSum += avg * cat.weightPercent;
       totalUsedWeight += cat.weightPercent;
     }
@@ -64,15 +67,70 @@ class GradeCalculator {
   /// Round to nearest integer for Zeugnis display (1–6).
   static int roundToWholeGrade(double grade) => grade.round().clamp(1, 6);
 
-  /// Format grade for detail display (1 decimal place).
+  /// Format grade for detail display (1 decimal place, German comma).
   static String formatGradeDetail(double? grade) {
     if (grade == null) return '–';
-    return grade.toStringAsFixed(1);
+    return grade.toStringAsFixed(1).replaceAll('.', ',');
   }
 
   /// Format grade for report/Zeugnis (whole number).
   static String formatGradeReport(double? grade) {
     if (grade == null) return '–';
     return roundToWholeGrade(grade).toString();
+  }
+
+  /// German grade steps with +/- modifiers (1/3-step convention).
+  /// 16 entries: 1+ (0.67) through 5- (5.33) and 6 (6.0).
+  static const List<(double, String)> gradeSteps = [
+    (0.67, '1+'), (1.0, '1'), (1.33, '1-'),
+    (1.67, '2+'), (2.0, '2'), (2.33, '2-'),
+    (2.67, '3+'), (3.0, '3'), (3.33, '3-'),
+    (3.67, '4+'), (4.0, '4'), (4.33, '4-'),
+    (4.67, '5+'), (5.0, '5'), (5.33, '5-'),
+    (6.0, '6'),
+  ];
+
+  /// Formats an individual entered grade as German +/- notation.
+  /// Returns e.g. "2+", "3", "4-" if the value matches a standard step,
+  /// otherwise falls back to one-decimal notation.
+  static String formatGradeEntry(double value) {
+    for (final (v, label) in gradeSteps) {
+      if ((value - v).abs() < 0.02) return label;
+    }
+    return value.toStringAsFixed(1).replaceAll('.', ',');
+  }
+
+  /// Berechnet den gewichteten Schnitt einer Liste von Noten (mit Faktor).
+  static double? categoryAverage(List<Grade> grades) {
+    if (grades.isEmpty) return null;
+    final totalFactor = grades.fold(0.0, (s, g) => s + g.factor);
+    if (totalFactor == 0) return null;
+    return grades.fold(0.0, (s, g) => s + g.value * g.factor) / totalFactor;
+  }
+
+  /// Applies subject-specific overrides to the global category list.
+  /// Returns only active categories, with overridden weights if set.
+  static List<GradeCategory> applySubjectOverrides(
+    List<GradeCategory> globalCategories,
+    List<SubjectCategoryOverride> overrides,
+  ) {
+    if (overrides.isEmpty) return globalCategories;
+    final overrideMap = {for (final o in overrides) o.categoryId: o};
+    return globalCategories
+        .where((cat) => overrideMap[cat.id]?.isActive ?? true)
+        .map((cat) {
+          final o = overrideMap[cat.id];
+          if (o?.weightOverride != null) {
+            return GradeCategory(
+              id: cat.id,
+              name: cat.name,
+              weightPercent: o!.weightOverride!,
+              colorHex: cat.colorHex,
+              icon: cat.icon,
+            );
+          }
+          return cat;
+        })
+        .toList();
   }
 }

@@ -25,7 +25,6 @@ class SubjectsNotifier extends AsyncNotifier<List<Subject>> {
   Future<void> addSubject(String name) async {
     await _db.subjectsDao.create(SubjectsCompanion.insert(name: name));
     ref.invalidateSelf();
-    ref.invalidate(subjectsStreamProvider);
   }
 
   Future<void> updateSubject(int id, String name) async {
@@ -33,17 +32,16 @@ class SubjectsNotifier extends AsyncNotifier<List<Subject>> {
       SubjectsCompanion(id: Value(id), name: Value(name)),
     );
     ref.invalidateSelf();
-    ref.invalidate(subjectsStreamProvider);
   }
 
   Future<void> deleteSubject(int id) async {
     await _db.transaction(() async {
       await _db.gradesDao.deleteBySubject(id);
       await _db.settingsDao.deleteForSubject(id);
+      await _db.subjectCategoryOverridesDao.deleteForSubject(id);
       await _db.classesDao.removeAllClassSubjectsForSubject(id);
       await _db.subjectsDao.deleteById(id);
     });
     ref.invalidateSelf();
-    ref.invalidate(subjectsStreamProvider);
   }
 }

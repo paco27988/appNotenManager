@@ -1174,6 +1174,13 @@ class $GradesTable extends Grades with TableInfo<$GradesTable, Grade> {
   late final GeneratedColumn<double> value = GeneratedColumn<double>(
       'value', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _factorMeta = const VerificationMeta('factor');
+  @override
+  late final GeneratedColumn<double> factor = GeneratedColumn<double>(
+      'factor', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1.0));
   static const VerificationMeta _semesterMeta =
       const VerificationMeta('semester');
   @override
@@ -1194,8 +1201,17 @@ class $GradesTable extends Grades with TableInfo<$GradesTable, Grade> {
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, studentId, subjectId, categoryId, value, semester, date, comment];
+  List<GeneratedColumn> get $columns => [
+        id,
+        studentId,
+        subjectId,
+        categoryId,
+        value,
+        factor,
+        semester,
+        date,
+        comment
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1235,6 +1251,10 @@ class $GradesTable extends Grades with TableInfo<$GradesTable, Grade> {
     } else if (isInserting) {
       context.missing(_valueMeta);
     }
+    if (data.containsKey('factor')) {
+      context.handle(_factorMeta,
+          factor.isAcceptableOrUnknown(data['factor']!, _factorMeta));
+    }
     if (data.containsKey('semester')) {
       context.handle(_semesterMeta,
           semester.isAcceptableOrUnknown(data['semester']!, _semesterMeta));
@@ -1270,6 +1290,8 @@ class $GradesTable extends Grades with TableInfo<$GradesTable, Grade> {
           .read(DriftSqlType.int, data['${effectivePrefix}category_id'])!,
       value: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
+      factor: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}factor'])!,
       semester: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}semester'])!,
       date: attachedDatabase.typeMapping
@@ -1291,6 +1313,7 @@ class Grade extends DataClass implements Insertable<Grade> {
   final int subjectId;
   final int categoryId;
   final double value;
+  final double factor;
   final int semester;
   final DateTime date;
   final String comment;
@@ -1300,6 +1323,7 @@ class Grade extends DataClass implements Insertable<Grade> {
       required this.subjectId,
       required this.categoryId,
       required this.value,
+      required this.factor,
       required this.semester,
       required this.date,
       required this.comment});
@@ -1311,6 +1335,7 @@ class Grade extends DataClass implements Insertable<Grade> {
     map['subject_id'] = Variable<int>(subjectId);
     map['category_id'] = Variable<int>(categoryId);
     map['value'] = Variable<double>(value);
+    map['factor'] = Variable<double>(factor);
     map['semester'] = Variable<int>(semester);
     map['date'] = Variable<DateTime>(date);
     map['comment'] = Variable<String>(comment);
@@ -1324,6 +1349,7 @@ class Grade extends DataClass implements Insertable<Grade> {
       subjectId: Value(subjectId),
       categoryId: Value(categoryId),
       value: Value(value),
+      factor: Value(factor),
       semester: Value(semester),
       date: Value(date),
       comment: Value(comment),
@@ -1339,6 +1365,7 @@ class Grade extends DataClass implements Insertable<Grade> {
       subjectId: serializer.fromJson<int>(json['subjectId']),
       categoryId: serializer.fromJson<int>(json['categoryId']),
       value: serializer.fromJson<double>(json['value']),
+      factor: serializer.fromJson<double>(json['factor']),
       semester: serializer.fromJson<int>(json['semester']),
       date: serializer.fromJson<DateTime>(json['date']),
       comment: serializer.fromJson<String>(json['comment']),
@@ -1353,6 +1380,7 @@ class Grade extends DataClass implements Insertable<Grade> {
       'subjectId': serializer.toJson<int>(subjectId),
       'categoryId': serializer.toJson<int>(categoryId),
       'value': serializer.toJson<double>(value),
+      'factor': serializer.toJson<double>(factor),
       'semester': serializer.toJson<int>(semester),
       'date': serializer.toJson<DateTime>(date),
       'comment': serializer.toJson<String>(comment),
@@ -1365,6 +1393,7 @@ class Grade extends DataClass implements Insertable<Grade> {
           int? subjectId,
           int? categoryId,
           double? value,
+          double? factor,
           int? semester,
           DateTime? date,
           String? comment}) =>
@@ -1374,6 +1403,7 @@ class Grade extends DataClass implements Insertable<Grade> {
         subjectId: subjectId ?? this.subjectId,
         categoryId: categoryId ?? this.categoryId,
         value: value ?? this.value,
+        factor: factor ?? this.factor,
         semester: semester ?? this.semester,
         date: date ?? this.date,
         comment: comment ?? this.comment,
@@ -1386,6 +1416,7 @@ class Grade extends DataClass implements Insertable<Grade> {
           ..write('subjectId: $subjectId, ')
           ..write('categoryId: $categoryId, ')
           ..write('value: $value, ')
+          ..write('factor: $factor, ')
           ..write('semester: $semester, ')
           ..write('date: $date, ')
           ..write('comment: $comment')
@@ -1394,8 +1425,8 @@ class Grade extends DataClass implements Insertable<Grade> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, studentId, subjectId, categoryId, value, semester, date, comment);
+  int get hashCode => Object.hash(id, studentId, subjectId, categoryId, value,
+      factor, semester, date, comment);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1405,6 +1436,7 @@ class Grade extends DataClass implements Insertable<Grade> {
           other.subjectId == this.subjectId &&
           other.categoryId == this.categoryId &&
           other.value == this.value &&
+          other.factor == this.factor &&
           other.semester == this.semester &&
           other.date == this.date &&
           other.comment == this.comment);
@@ -1416,6 +1448,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
   final Value<int> subjectId;
   final Value<int> categoryId;
   final Value<double> value;
+  final Value<double> factor;
   final Value<int> semester;
   final Value<DateTime> date;
   final Value<String> comment;
@@ -1425,6 +1458,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
     this.subjectId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.value = const Value.absent(),
+    this.factor = const Value.absent(),
     this.semester = const Value.absent(),
     this.date = const Value.absent(),
     this.comment = const Value.absent(),
@@ -1435,6 +1469,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
     required int subjectId,
     required int categoryId,
     required double value,
+    this.factor = const Value.absent(),
     required int semester,
     required DateTime date,
     this.comment = const Value.absent(),
@@ -1450,6 +1485,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
     Expression<int>? subjectId,
     Expression<int>? categoryId,
     Expression<double>? value,
+    Expression<double>? factor,
     Expression<int>? semester,
     Expression<DateTime>? date,
     Expression<String>? comment,
@@ -1460,6 +1496,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
       if (subjectId != null) 'subject_id': subjectId,
       if (categoryId != null) 'category_id': categoryId,
       if (value != null) 'value': value,
+      if (factor != null) 'factor': factor,
       if (semester != null) 'semester': semester,
       if (date != null) 'date': date,
       if (comment != null) 'comment': comment,
@@ -1472,6 +1509,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
       Value<int>? subjectId,
       Value<int>? categoryId,
       Value<double>? value,
+      Value<double>? factor,
       Value<int>? semester,
       Value<DateTime>? date,
       Value<String>? comment}) {
@@ -1481,6 +1519,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
       subjectId: subjectId ?? this.subjectId,
       categoryId: categoryId ?? this.categoryId,
       value: value ?? this.value,
+      factor: factor ?? this.factor,
       semester: semester ?? this.semester,
       date: date ?? this.date,
       comment: comment ?? this.comment,
@@ -1505,6 +1544,9 @@ class GradesCompanion extends UpdateCompanion<Grade> {
     if (value.present) {
       map['value'] = Variable<double>(value.value);
     }
+    if (factor.present) {
+      map['factor'] = Variable<double>(factor.value);
+    }
     if (semester.present) {
       map['semester'] = Variable<int>(semester.value);
     }
@@ -1525,6 +1567,7 @@ class GradesCompanion extends UpdateCompanion<Grade> {
           ..write('subjectId: $subjectId, ')
           ..write('categoryId: $categoryId, ')
           ..write('value: $value, ')
+          ..write('factor: $factor, ')
           ..write('semester: $semester, ')
           ..write('date: $date, ')
           ..write('comment: $comment')
@@ -1794,6 +1837,289 @@ class SemesterSettingsCompanion extends UpdateCompanion<SemesterSetting> {
   }
 }
 
+class $SubjectCategoryOverridesTable extends SubjectCategoryOverrides
+    with TableInfo<$SubjectCategoryOverridesTable, SubjectCategoryOverride> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SubjectCategoryOverridesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _subjectIdMeta =
+      const VerificationMeta('subjectId');
+  @override
+  late final GeneratedColumn<int> subjectId = GeneratedColumn<int>(
+      'subject_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES subjects (id)'));
+  static const VerificationMeta _categoryIdMeta =
+      const VerificationMeta('categoryId');
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+      'category_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES grade_categories (id)'));
+  static const VerificationMeta _isActiveMeta =
+      const VerificationMeta('isActive');
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+      'is_active', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_active" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _weightOverrideMeta =
+      const VerificationMeta('weightOverride');
+  @override
+  late final GeneratedColumn<double> weightOverride = GeneratedColumn<double>(
+      'weight_override', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [subjectId, categoryId, isActive, weightOverride];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'subject_category_overrides';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<SubjectCategoryOverride> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('subject_id')) {
+      context.handle(_subjectIdMeta,
+          subjectId.isAcceptableOrUnknown(data['subject_id']!, _subjectIdMeta));
+    } else if (isInserting) {
+      context.missing(_subjectIdMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+          _categoryIdMeta,
+          categoryId.isAcceptableOrUnknown(
+              data['category_id']!, _categoryIdMeta));
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(_isActiveMeta,
+          isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta));
+    }
+    if (data.containsKey('weight_override')) {
+      context.handle(
+          _weightOverrideMeta,
+          weightOverride.isAcceptableOrUnknown(
+              data['weight_override']!, _weightOverrideMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {subjectId, categoryId};
+  @override
+  SubjectCategoryOverride map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SubjectCategoryOverride(
+      subjectId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}subject_id'])!,
+      categoryId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}category_id'])!,
+      isActive: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_active'])!,
+      weightOverride: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}weight_override']),
+    );
+  }
+
+  @override
+  $SubjectCategoryOverridesTable createAlias(String alias) {
+    return $SubjectCategoryOverridesTable(attachedDatabase, alias);
+  }
+}
+
+class SubjectCategoryOverride extends DataClass
+    implements Insertable<SubjectCategoryOverride> {
+  final int subjectId;
+  final int categoryId;
+  final bool isActive;
+  final double? weightOverride;
+  const SubjectCategoryOverride(
+      {required this.subjectId,
+      required this.categoryId,
+      required this.isActive,
+      this.weightOverride});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['subject_id'] = Variable<int>(subjectId);
+    map['category_id'] = Variable<int>(categoryId);
+    map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || weightOverride != null) {
+      map['weight_override'] = Variable<double>(weightOverride);
+    }
+    return map;
+  }
+
+  SubjectCategoryOverridesCompanion toCompanion(bool nullToAbsent) {
+    return SubjectCategoryOverridesCompanion(
+      subjectId: Value(subjectId),
+      categoryId: Value(categoryId),
+      isActive: Value(isActive),
+      weightOverride: weightOverride == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weightOverride),
+    );
+  }
+
+  factory SubjectCategoryOverride.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SubjectCategoryOverride(
+      subjectId: serializer.fromJson<int>(json['subjectId']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      weightOverride: serializer.fromJson<double?>(json['weightOverride']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'subjectId': serializer.toJson<int>(subjectId),
+      'categoryId': serializer.toJson<int>(categoryId),
+      'isActive': serializer.toJson<bool>(isActive),
+      'weightOverride': serializer.toJson<double?>(weightOverride),
+    };
+  }
+
+  SubjectCategoryOverride copyWith(
+          {int? subjectId,
+          int? categoryId,
+          bool? isActive,
+          Value<double?> weightOverride = const Value.absent()}) =>
+      SubjectCategoryOverride(
+        subjectId: subjectId ?? this.subjectId,
+        categoryId: categoryId ?? this.categoryId,
+        isActive: isActive ?? this.isActive,
+        weightOverride:
+            weightOverride.present ? weightOverride.value : this.weightOverride,
+      );
+  @override
+  String toString() {
+    return (StringBuffer('SubjectCategoryOverride(')
+          ..write('subjectId: $subjectId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isActive: $isActive, ')
+          ..write('weightOverride: $weightOverride')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(subjectId, categoryId, isActive, weightOverride);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SubjectCategoryOverride &&
+          other.subjectId == this.subjectId &&
+          other.categoryId == this.categoryId &&
+          other.isActive == this.isActive &&
+          other.weightOverride == this.weightOverride);
+}
+
+class SubjectCategoryOverridesCompanion
+    extends UpdateCompanion<SubjectCategoryOverride> {
+  final Value<int> subjectId;
+  final Value<int> categoryId;
+  final Value<bool> isActive;
+  final Value<double?> weightOverride;
+  final Value<int> rowid;
+  const SubjectCategoryOverridesCompanion({
+    this.subjectId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.weightOverride = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SubjectCategoryOverridesCompanion.insert({
+    required int subjectId,
+    required int categoryId,
+    this.isActive = const Value.absent(),
+    this.weightOverride = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : subjectId = Value(subjectId),
+        categoryId = Value(categoryId);
+  static Insertable<SubjectCategoryOverride> custom({
+    Expression<int>? subjectId,
+    Expression<int>? categoryId,
+    Expression<bool>? isActive,
+    Expression<double>? weightOverride,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (subjectId != null) 'subject_id': subjectId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (isActive != null) 'is_active': isActive,
+      if (weightOverride != null) 'weight_override': weightOverride,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SubjectCategoryOverridesCompanion copyWith(
+      {Value<int>? subjectId,
+      Value<int>? categoryId,
+      Value<bool>? isActive,
+      Value<double?>? weightOverride,
+      Value<int>? rowid}) {
+    return SubjectCategoryOverridesCompanion(
+      subjectId: subjectId ?? this.subjectId,
+      categoryId: categoryId ?? this.categoryId,
+      isActive: isActive ?? this.isActive,
+      weightOverride: weightOverride ?? this.weightOverride,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (subjectId.present) {
+      map['subject_id'] = Variable<int>(subjectId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (weightOverride.present) {
+      map['weight_override'] = Variable<double>(weightOverride.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SubjectCategoryOverridesCompanion(')
+          ..write('subjectId: $subjectId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isActive: $isActive, ')
+          ..write('weightOverride: $weightOverride, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   late final $ClassesTable classes = $ClassesTable(this);
@@ -1805,12 +2131,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GradesTable grades = $GradesTable(this);
   late final $SemesterSettingsTable semesterSettings =
       $SemesterSettingsTable(this);
+  late final $SubjectCategoryOverridesTable subjectCategoryOverrides =
+      $SubjectCategoryOverridesTable(this);
   late final ClassesDao classesDao = ClassesDao(this as AppDatabase);
   late final StudentsDao studentsDao = StudentsDao(this as AppDatabase);
   late final SubjectsDao subjectsDao = SubjectsDao(this as AppDatabase);
   late final GradesDao gradesDao = GradesDao(this as AppDatabase);
   late final CategoriesDao categoriesDao = CategoriesDao(this as AppDatabase);
   late final SettingsDao settingsDao = SettingsDao(this as AppDatabase);
+  late final SubjectCategoryOverridesDao subjectCategoryOverridesDao =
+      SubjectCategoryOverridesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1822,6 +2152,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         classSubjects,
         gradeCategories,
         grades,
-        semesterSettings
+        semesterSettings,
+        subjectCategoryOverrides
       ];
 }
