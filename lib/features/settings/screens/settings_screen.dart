@@ -201,6 +201,7 @@ class _SubjectSettingTile extends ConsumerWidget {
               onPressed: () =>
                   context.push('/settings/subject/${subject.id}'),
             ),
+            const Icon(Icons.expand_more),
           ],
         ),
         subtitle: settingAsync.when(

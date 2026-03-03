@@ -17,6 +17,9 @@ class StudentsDao extends DatabaseAccessor<AppDatabase>
   Future<Student?> getById(int id) =>
       (select(students)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  Stream<Student?> watchById(int id) =>
+      (select(students)..where((t) => t.id.equals(id))).watchSingleOrNull();
+
   Future<int> create(StudentsCompanion entry) => into(students).insert(entry);
 
   Future<bool> update_(StudentsCompanion entry) =>

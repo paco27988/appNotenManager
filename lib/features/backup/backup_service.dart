@@ -162,8 +162,8 @@ class BackupService {
       _validateBackupData(data);
       await _importData(data);
       return 'Import erfolgreich';
-    } on FormatException catch (e) {
-      return 'Fehler: ${e.message}';
+    } on FormatException {
+      return 'Fehler: Ungültiges Backup-Format';
     } catch (_) {
       return 'Fehler: Import fehlgeschlagen';
     }
@@ -175,7 +175,7 @@ class BackupService {
 
   void _validateBackupData(Map<String, dynamic> data) {
     final version = data['version'];
-    if (version is! int || version > 1) {
+    if (version is! int || version < 1 || version > 1) {
       throw const FormatException('Nicht unterstützte Backup-Version');
     }
 
@@ -282,6 +282,12 @@ class BackupService {
       if (g['studentId'] is! int) {
         throw const FormatException('Ungültige studentId in grades (muss Integer sein)');
       }
+      if (g['subjectId'] is! int) {
+        throw const FormatException('Ungültige subjectId in grades (muss Integer sein)');
+      }
+      if (g['categoryId'] is! int) {
+        throw const FormatException('Ungültige categoryId in grades (muss Integer sein)');
+      }
       if (g['value'] is! num) {
         throw const FormatException('Ungültiger Notenwert (muss Zahl sein)');
       }
@@ -326,6 +332,11 @@ class BackupService {
       }
       if (s['secondHalfWeight'] is! num) {
         throw const FormatException('Ungültige secondHalfWeight (muss Zahl sein)');
+      }
+      final subjectId = s['subjectId'];
+      if (subjectId != null && subjectId is! int) {
+        throw const FormatException(
+            'subjectId in semesterSettings muss Integer oder null sein');
       }
       final w1 = (s['firstHalfWeight'] as num).toDouble();
       final w2 = (s['secondHalfWeight'] as num).toDouble();

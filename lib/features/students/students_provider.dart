@@ -10,9 +10,9 @@ final studentsByClassProvider =
 });
 
 final studentByIdProvider =
-    FutureProvider.family<Student?, int>((ref, id) async {
+    StreamProvider.family<Student?, int>((ref, id) {
   final db = ref.watch(databaseProvider);
-  return db.studentsDao.getById(id);
+  return db.studentsDao.watchById(id);
 });
 
 final studentsNotifierProvider =

@@ -74,9 +74,11 @@ class ClassesNotifier extends AsyncNotifier<List<SchoolClass>> {
 
   Future<void> assignSubject(int classId, int subjectId) async {
     await _db.classesDao.assignSubject(classId, subjectId);
+    ref.invalidateSelf();
   }
 
   Future<void> removeSubject(int classId, int subjectId) async {
     await _db.classesDao.removeSubject(classId, subjectId);
+    ref.invalidateSelf();
   }
 }

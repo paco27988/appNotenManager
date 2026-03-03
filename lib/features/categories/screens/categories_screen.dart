@@ -18,44 +18,93 @@ class CategoriesScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => const Center(child: Text('Ein Fehler ist aufgetreten')),
         data: (categories) {
+          if (categories.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.label_outlined,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Noch keine Kategorien',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tippe auf "+ Neue Kategorie", um zu beginnen.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
           final totalWeight =
               categories.fold(0.0, (sum, c) => sum + c.weightPercent);
           final isValid = (totalWeight - 100).abs() < 0.01;
 
           return Column(
             children: [
-              // Weight summary banner
-              Material(
-                color: isValid
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        isValid ? Icons.check_circle_outline : Icons.warning_amber_outlined,
-                        size: 18,
-                        color: isValid
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Gesamtgewichtung: ${totalWeight.toStringAsFixed(1)}%'
-                        '${isValid ? "" : " – muss 100% ergeben"}',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: isValid
-                                  ? Theme.of(context).colorScheme.onPrimaryContainer
-                                  : Theme.of(context).colorScheme.onErrorContainer,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ],
+              // Weight summary banner (only when categories exist and weight is invalid)
+              if (!isValid)
+                Material(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Gesamtgewichtung: ${totalWeight.toStringAsFixed(1)}% – muss 100% ergeben',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.onErrorContainer,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Material(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Gesamtgewichtung: ${totalWeight.toStringAsFixed(1)}%',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -73,7 +122,7 @@ class CategoriesScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddDialog(context, ref),
         icon: const Icon(Icons.add),
-        label: const Text('Kategorie'),
+        label: const Text('Neue Kategorie'),
       ),
     );
   }
@@ -213,7 +262,7 @@ class _CategoryCard extends ConsumerWidget {
       builder: (_) => AlertDialog(
         title: const Text('Kategorie löschen'),
         content: Text(
-          'Kategorie "${category.name}" löschen? Bestehende Noten dieser Kategorie bleiben erhalten.',
+          'Kategorie "${category.name}" und alle zugehörigen Noten löschen?',
         ),
         actions: [
           TextButton(

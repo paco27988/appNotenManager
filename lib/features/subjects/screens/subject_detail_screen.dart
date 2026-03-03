@@ -48,14 +48,17 @@ class _SubjectCategoryBody extends ConsumerWidget {
   final List<GradeCategory> categories;
   final List<SubjectCategoryOverride> overrides;
 
-  const _SubjectCategoryBody({
+  // Cannot be const because of late final _overrideMap field.
+  // ignore: prefer_const_constructors_in_immutables
+  _SubjectCategoryBody({
     required this.subjectId,
     required this.categories,
     required this.overrides,
   });
 
-  SubjectCategoryOverride? _overrideFor(int categoryId) =>
-      overrides.where((o) => o.categoryId == categoryId).firstOrNull;
+  late final _overrideMap = {for (final o in overrides) o.categoryId: o};
+
+  SubjectCategoryOverride? _overrideFor(int categoryId) => _overrideMap[categoryId];
 
   bool _isActive(int categoryId) =>
       _overrideFor(categoryId)?.isActive ?? true;
@@ -87,7 +90,7 @@ class _SubjectCategoryBody extends ConsumerWidget {
         Card(
           color: weightOk
               ? Theme.of(context).colorScheme.primaryContainer
-              : const Color(0xFFFFF3E0),
+              : Theme.of(context).colorScheme.errorContainer,
           child: Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -97,7 +100,7 @@ class _SubjectCategoryBody extends ConsumerWidget {
                   weightOk ? Icons.check_circle : Icons.warning_amber,
                   color: weightOk
                       ? Theme.of(context).colorScheme.primary
-                      : Colors.orange[800],
+                      : Theme.of(context).colorScheme.error,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -109,7 +112,7 @@ class _SubjectCategoryBody extends ConsumerWidget {
                     fontWeight: FontWeight.bold,
                     color: weightOk
                         ? Theme.of(context).colorScheme.onPrimaryContainer
-                        : Colors.orange[900],
+                        : Theme.of(context).colorScheme.onErrorContainer,
                   ),
                 ),
                 const Spacer(),
@@ -236,9 +239,12 @@ class _CategoryOverrideTileState extends State<_CategoryOverrideTile> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Switch(
-                  value: widget.isActive,
-                  onChanged: widget.onToggle,
+                Semantics(
+                  label: '${widget.category.name} ${widget.isActive ? "aktiv" : "inaktiv"}',
+                  child: Switch(
+                    value: widget.isActive,
+                    onChanged: widget.onToggle,
+                  ),
                 ),
               ],
             ),

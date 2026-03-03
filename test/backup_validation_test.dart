@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leher_app/core/database/app_database.dart';
@@ -42,7 +43,7 @@ Map<String, dynamic> _validData() => {
         },
       ],
       'semesterSettings': [
-        {'id': 1, 'subjectId': null, 'firstHalfWeight': 50.0, 'secondHalfWeight': 50.0},
+        <String, dynamic>{'id': 1, 'subjectId': null, 'firstHalfWeight': 50.0, 'secondHalfWeight': 50.0},
       ],
       'subjectCategoryOverrides': [],
     };
@@ -52,6 +53,8 @@ BackupService _service() => BackupService(
     );
 
 void main() {
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   group('BackupService._validateBackupData', () {
     test('valid data passes without throwing', () {
       final svc = _service();
@@ -67,11 +70,13 @@ void main() {
       );
     });
 
-    test('version == 0 passes (forward-compat: only version > 1 rejected)',
-        () {
+    test('version == 0 throws FormatException', () {
       final data = _validData();
       data['version'] = 0;
-      expect(() => _service().validateBackupData(data), returnsNormally);
+      expect(
+        () => _service().validateBackupData(data),
+        throwsA(isA<FormatException>()),
+      );
     });
 
     test('category id as String throws FormatException', () {
@@ -181,6 +186,60 @@ void main() {
     test('missing top-level section throws FormatException', () {
       final data = _validData();
       data.remove('grades');
+      expect(
+        () => _service().validateBackupData(data),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('semesterSettings.subjectId as String throws FormatException', () {
+      final data = _validData();
+      (data['semesterSettings'] as List)[0]['subjectId'] = '1'; // String statt int/null
+      expect(
+        () => _service().validateBackupData(data),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('grade.subjectId as String throws FormatException', () {
+      final data = _validData();
+      (data['grades'] as List)[0]['subjectId'] = '1';
+      expect(
+        () => _service().validateBackupData(data),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('grade.categoryId as String throws FormatException', () {
+      final data = _validData();
+      (data['grades'] as List)[0]['categoryId'] = '1';
+      expect(
+        () => _service().validateBackupData(data),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('grade.semester == 3 throws FormatException', () {
+      final data = _validData();
+      (data['grades'] as List)[0]['semester'] = 3;
+      expect(
+        () => _service().validateBackupData(data),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('grade.date as invalid string throws FormatException', () {
+      final data = _validData();
+      (data['grades'] as List)[0]['date'] = 'not-a-date';
+      expect(
+        () => _service().validateBackupData(data),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('grade.factor below 0.1 throws FormatException', () {
+      final data = _validData();
+      (data['grades'] as List)[0]['factor'] = 0.05;
       expect(
         () => _service().validateBackupData(data),
         throwsA(isA<FormatException>()),

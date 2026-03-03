@@ -245,8 +245,8 @@ void main() {
           ),
         );
 
-    expect(
-      () => db.into(db.grades).insert(
+    await expectLater(
+      db.into(db.grades).insert(
             GradesCompanion.insert(
               studentId: 9999, // non-existent
               subjectId: subjectId,

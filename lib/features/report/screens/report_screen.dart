@@ -223,7 +223,14 @@ class _GradeCell extends ConsumerWidget {
         height: 16,
         child: CircularProgressIndicator(strokeWidth: 1),
       ),
-      error: (e, _) => const Text('!'),
+      error: (e, _) => Tooltip(
+        message: 'Fehler beim Laden',
+        child: Icon(
+          Icons.error_outline,
+          size: 14,
+          color: Theme.of(context).colorScheme.error,
+        ),
+      ),
       data: (grades) {
         final categories = categoriesAsync.valueOrNull ?? [];
         final subjectSetting = subjectSettingAsync.valueOrNull;

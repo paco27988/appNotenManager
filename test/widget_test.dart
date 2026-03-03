@@ -66,6 +66,42 @@ void main() {
       expect(result, 2.5);
     });
 
+    test('calculateYearlyGrade returns hj2 when hj1 is null', () {
+      expect(GradeCalculator.calculateYearlyGrade(null, 4.0, 50, 50), closeTo(4.0, 0.001));
+    });
+
+    test('calculateYearlyGrade returns null when both weights are zero', () {
+      expect(GradeCalculator.calculateYearlyGrade(2.0, 4.0, 0, 0), isNull);
+    });
+
+    group('categoryAverage', () {
+      test('returns null for empty list', () {
+        expect(GradeCalculator.categoryAverage([]), isNull);
+      });
+
+      test('returns null when all factors are zero', () {
+        final grades = [
+          Grade(id: 1, studentId: 1, subjectId: 1, categoryId: 1,
+                value: 3.0, factor: 0.0, semester: 1,
+                date: DateTime(2024), comment: ''),
+        ];
+        expect(GradeCalculator.categoryAverage(grades), isNull);
+      });
+
+      test('weighted by factor', () {
+        final grades = [
+          Grade(id: 1, studentId: 1, subjectId: 1, categoryId: 1,
+                value: 2.0, factor: 1.0, semester: 1,
+                date: DateTime(2024), comment: ''),
+          Grade(id: 2, studentId: 1, subjectId: 1, categoryId: 1,
+                value: 4.0, factor: 3.0, semester: 1,
+                date: DateTime(2024), comment: ''),
+        ];
+        // (2*1 + 4*3) / 4 = 14/4 = 3.5
+        expect(GradeCalculator.categoryAverage(grades), closeTo(3.5, 0.001));
+      });
+    });
+
     test('roundToWholeGrade clamps to 1-6', () {
       expect(GradeCalculator.roundToWholeGrade(1.4), 1);
       expect(GradeCalculator.roundToWholeGrade(1.5), 2);
@@ -224,6 +260,18 @@ void main() {
         // Cat2 must keep its original weight
         expect(result.firstWhere((c) => c.id == 2).weightPercent,
             closeTo(40.0, 0.001));
+      });
+
+      test('returns empty list when all categories are deactivated', () {
+        final cats = [
+          const GradeCategory(id: 1, name: 'A', weightPercent: 60, colorHex: '#4CAF50', icon: 'label'),
+          const GradeCategory(id: 2, name: 'B', weightPercent: 40, colorHex: '#2196F3', icon: 'label'),
+        ];
+        final overrides = [
+          const SubjectCategoryOverride(subjectId: 1, categoryId: 1, isActive: false, weightOverride: null),
+          const SubjectCategoryOverride(subjectId: 1, categoryId: 2, isActive: false, weightOverride: null),
+        ];
+        expect(GradeCalculator.applySubjectOverrides(cats, overrides), isEmpty);
       });
     });
   });
