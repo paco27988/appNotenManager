@@ -31,8 +31,21 @@ class StudentDetailScreen extends ConsumerWidget {
           body: Center(child: Text('Ein Fehler ist aufgetreten'))),
       data: (student) {
         if (student == null) {
-          return const Scaffold(
-              body: Center(child: Text('Schüler nicht gefunden')));
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Schüler nicht gefunden'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => context.go('/'),
+                    child: const Text('Zurück zur Übersicht'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return Scaffold(
         appBar: AppBar(
@@ -101,6 +114,12 @@ class StudentDetailScreen extends ConsumerWidget {
                         onPressed: () => context.pop(),
                         icon: const Icon(Icons.arrow_back),
                         label: const Text('Zurück'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => context.go('/class/$classId'),
+                        icon: const Icon(Icons.book_outlined),
+                        label: const Text('Fächer der Klasse verwalten'),
                       ),
                     ],
                   ),

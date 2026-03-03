@@ -15,20 +15,42 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Meine Klassen'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.category),
-            tooltip: 'Kategorien',
-            onPressed: () => context.push('/categories'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Einstellungen',
-            onPressed: () => context.push('/settings'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.backup),
-            tooltip: 'Backup',
-            onPressed: () => context.push('/backup'),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Mehr',
+            onSelected: (value) {
+              switch (value) {
+                case 'categories':
+                  context.push('/categories');
+                case 'settings':
+                  context.push('/settings');
+                case 'backup':
+                  context.push('/backup');
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'categories',
+                child: ListTile(
+                  leading: Icon(Icons.category),
+                  title: Text('Kategorien'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'settings',
+                child: ListTile(
+                  leading: Icon(Icons.settings),
+                  title: Text('Einstellungen'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'backup',
+                child: ListTile(
+                  leading: Icon(Icons.backup),
+                  title: Text('Datensicherung'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -39,7 +61,7 @@ class HomeScreen extends ConsumerWidget {
         ),
         data: (classes) {
           if (classes.isEmpty) {
-            return _EmptyClassesState();
+            return const _EmptyClassesState();
           }
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -74,6 +96,8 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _EmptyClassesState extends StatelessWidget {
+  const _EmptyClassesState();
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -277,6 +301,8 @@ class _ClassCard extends ConsumerWidget {
               await ref
                   .read(classesNotifierProvider.notifier)
                   .deleteClass(cls.id);
+              // ignore: use_build_context_synchronously
+              if (!context.mounted) return;
             },
             child: const Text('Löschen'),
           ),
@@ -311,7 +337,7 @@ class _ClassDialogState extends State<_ClassDialog> {
   static String _defaultSchoolYear() {
     final now = DateTime.now();
     final year = now.month >= 8 ? now.year : now.year - 1;
-    return '$year/${(year + 1).toString().substring(2)}';
+    return '$year/${((year + 1) % 100).toString().padLeft(2, '0')}';
   }
 
   @override

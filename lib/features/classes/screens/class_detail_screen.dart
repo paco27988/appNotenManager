@@ -26,8 +26,21 @@ class ClassDetailScreen extends ConsumerWidget {
       ),
       data: (cls) {
         if (cls == null) {
-          return const Scaffold(
-              body: Center(child: Text('Klasse nicht gefunden')));
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Klasse nicht gefunden'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => context.go('/'),
+                    child: const Text('Zurück zur Übersicht'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return DefaultTabController(
           length: 2,
@@ -317,6 +330,8 @@ class _StudentTile extends ConsumerWidget {
               await ref
                   .read(studentsNotifierProvider.notifier)
                   .deleteStudent(student.id, classId);
+              // ignore: use_build_context_synchronously
+              if (!context.mounted) return;
             },
             child: const Text('Löschen'),
           ),
@@ -436,6 +451,8 @@ class _SubjectsTab extends ConsumerWidget {
                               await ref
                                   .read(classesNotifierProvider.notifier)
                                   .removeSubject(classId, s.id);
+                              // ignore: use_build_context_synchronously
+                              if (!context.mounted) return;
                             },
                             child: const Text('Entfernen'),
                           ),
@@ -503,6 +520,8 @@ class _SubjectPickerDialog extends ConsumerWidget {
                     final notifier = ref.read(classesNotifierProvider.notifier);
                     if (val == true) {
                       await notifier.assignSubject(classId, s.id);
+                      // ignore: use_build_context_synchronously
+                      if (!context.mounted) return;
                     } else {
                       final confirmed = await showDialog<bool>(
                         context: context,
@@ -523,6 +542,8 @@ class _SubjectPickerDialog extends ConsumerWidget {
                       );
                       if (confirmed == true) {
                         await notifier.removeSubject(classId, s.id);
+                        // ignore: use_build_context_synchronously
+                        if (!context.mounted) return;
                       }
                     }
                   },

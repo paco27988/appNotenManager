@@ -175,8 +175,11 @@ class BackupService {
 
   void _validateBackupData(Map<String, dynamic> data) {
     final version = data['version'];
-    if (version is! int || version < 1 || version > 1) {
+    if (version is! int || version < 1) {
       throw const FormatException('Nicht unterstützte Backup-Version');
+    }
+    if (version > 1) {
+      debugPrint('Backup version $version > 1, attempting import with version-1 parser');
     }
 
     _requireList(data, 'categories');
@@ -312,6 +315,7 @@ class BackupService {
       if (sem != 1 && sem != 2) {
         throw const FormatException('Ungültiges Halbjahr (1 oder 2)');
       }
+      if (g['date'] is! String) throw const FormatException('Ungültiges Datum in Noten');
       try {
         DateTime.parse(g['date'] as String);
       } catch (_) {

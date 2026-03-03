@@ -104,16 +104,29 @@ class _SubjectCategoryBody extends ConsumerWidget {
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  weightOk
-                      ? 'Aktive Gewichtung: ${totalWeight.toStringAsFixed(0)}% ✓'
-                      : 'Aktive Gewichtung: ${totalWeight.toStringAsFixed(0)}% (≠ 100%)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: weightOk
-                        ? Theme.of(context).colorScheme.onPrimaryContainer
-                        : Theme.of(context).colorScheme.onErrorContainer,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      weightOk
+                          ? 'Aktive Gewichtung: ${totalWeight.toStringAsFixed(0)}%'
+                          : 'Aktive Gewichtung: ${totalWeight.toStringAsFixed(0)}% (≠ 100%)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: weightOk
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                    ),
+                    if (weightOk) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ],
+                  ],
                 ),
                 const Spacer(),
                 Text(

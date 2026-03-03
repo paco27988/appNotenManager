@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../classes/classes_provider.dart';
 import '../../students/students_provider.dart';
 import '../../grades/grades_provider.dart';
@@ -20,6 +21,61 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   // 0 = HJ1, 1 = HJ2, 2 = Gesamtjahr
   int _mode = 2;
 
+  void _shareReport(
+    BuildContext context,
+    List<Student> students,
+    List<Subject> subjects,
+    Map<int, List<Grade>> gradesByStudent,
+    Map<int, List<GradeCategory>> categoriesBySubject,
+    Map<int, SemesterSetting?> subjectSettings,
+    SemesterSetting? globalSetting,
+  ) {
+    final buf = StringBuffer();
+    final modeName = _mode == 0 ? 'Halbjahr 1' : _mode == 1 ? 'Halbjahr 2' : 'Gesamtjahr';
+    buf.writeln('Zeugnis – $modeName');
+    buf.writeln('');
+
+    // Header row
+    buf.write('Schüler'.padRight(25));
+    for (final s in subjects) {
+      buf.write(s.name.padRight(12));
+    }
+    buf.writeln();
+    buf.writeln('-' * (25 + subjects.length * 12));
+
+    for (final student in students) {
+      buf.write('${student.lastName}, ${student.firstName}'.padRight(25));
+      final grades = gradesByStudent[student.id] ?? [];
+      for (final subject in subjects) {
+        final cats = categoriesBySubject[subject.id] ?? [];
+        final subjectSetting = subjectSettings[subject.id];
+        final w1 = subjectSetting?.firstHalfWeight ?? globalSetting?.firstHalfWeight ?? 50.0;
+        final w2 = subjectSetting?.secondHalfWeight ?? globalSetting?.secondHalfWeight ?? 50.0;
+        final subjectGrades = grades.where((g) => g.subjectId == subject.id).toList();
+
+        double? grade;
+        if (_mode == 0) {
+          grade = GradeCalculator.calculateSemesterGrade(subjectGrades, cats, 1);
+        } else if (_mode == 1) {
+          grade = GradeCalculator.calculateSemesterGrade(subjectGrades, cats, 2);
+        } else {
+          final hj1 = GradeCalculator.calculateSemesterGrade(subjectGrades, cats, 1);
+          final hj2 = GradeCalculator.calculateSemesterGrade(subjectGrades, cats, 2);
+          grade = GradeCalculator.calculateYearlyGrade(hj1, hj2, w1, w2);
+        }
+
+        final display = _mode == 2
+            ? GradeCalculator.formatGradeReport(grade)
+            : GradeCalculator.formatGradeDetail(grade);
+        buf.write(display.padRight(12));
+      }
+      buf.writeln();
+    }
+
+    final text = buf.toString();
+    Share.share(text, subject: 'Zeugnis – $modeName');
+  }
+
   @override
   Widget build(BuildContext context) {
     final classAsync = ref.watch(classByIdProvider(widget.classId));
@@ -32,6 +88,21 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           data: (c) => Text('Zeugnis: ${c?.name ?? ''}'),
           orElse: () => const Text('Zeugnis'),
         ),
+        actions: [
+          studentsAsync.maybeWhen(
+            data: (students) => subjectsAsync.maybeWhen(
+              data: (subjects) => _ShareButton(
+                classId: widget.classId,
+                mode: _mode,
+                students: students,
+                subjects: subjects,
+                onShare: _shareReport,
+              ),
+              orElse: () => const SizedBox.shrink(),
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -107,6 +178,66 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   }
 }
 
+/// Share button that gathers all needed data from providers.
+class _ShareButton extends ConsumerWidget {
+  final int classId;
+  final int mode;
+  final List<Student> students;
+  final List<Subject> subjects;
+  final Function(
+    BuildContext,
+    List<Student>,
+    List<Subject>,
+    Map<int, List<Grade>>,
+    Map<int, List<GradeCategory>>,
+    Map<int, SemesterSetting?>,
+    SemesterSetting?,
+  ) onShare;
+
+  const _ShareButton({
+    required this.classId,
+    required this.mode,
+    required this.students,
+    required this.subjects,
+    required this.onShare,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch all per-student grade streams
+    final Map<int, List<Grade>> gradesByStudent = {};
+    for (final student in students) {
+      final gradesAsync = ref.watch(gradesByStudentProvider(student.id));
+      gradesByStudent[student.id] = gradesAsync.valueOrNull ?? [];
+    }
+
+    // Watch per-subject category and setting providers
+    final Map<int, List<GradeCategory>> categoriesBySubject = {};
+    final Map<int, SemesterSetting?> subjectSettings = {};
+    for (final subject in subjects) {
+      categoriesBySubject[subject.id] =
+          ref.watch(effectiveCategoriesProvider(subject.id)).valueOrNull ?? [];
+      subjectSettings[subject.id] =
+          ref.watch(subjectSemesterSettingProvider(subject.id)).valueOrNull;
+    }
+    final globalSetting = ref.watch(globalSemesterSettingProvider).valueOrNull;
+
+    return IconButton(
+      icon: const Icon(Icons.share),
+      tooltip: 'Zeugnis teilen',
+      onPressed: () => onShare(
+        context,
+        students,
+        subjects,
+        gradesByStudent,
+        categoriesBySubject,
+        subjectSettings,
+        globalSetting,
+      ),
+    );
+  }
+}
+
 class _ReportTable extends ConsumerWidget {
   final List<Student> students;
   final List<Subject> subjects;
@@ -160,6 +291,17 @@ class _ReportTable extends ConsumerWidget {
       );
     }
 
+    // Watch per-subject providers once at table level — O(subjects) subscriptions
+    final Map<int, List<GradeCategory>> categoriesBySubject = {};
+    final Map<int, SemesterSetting?> subjectSettings = {};
+    for (final subject in subjects) {
+      categoriesBySubject[subject.id] =
+          ref.watch(effectiveCategoriesProvider(subject.id)).valueOrNull ?? [];
+      subjectSettings[subject.id] =
+          ref.watch(subjectSemesterSettingProvider(subject.id)).valueOrNull;
+    }
+    final globalSetting = ref.watch(globalSemesterSettingProvider).valueOrNull;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
@@ -184,6 +326,9 @@ class _ReportTable extends ConsumerWidget {
                           studentId: student.id,
                           subjectId: subject.id,
                           mode: mode,
+                          categories: categoriesBySubject[subject.id] ?? [],
+                          subjectSetting: subjectSettings[subject.id],
+                          globalSetting: globalSetting,
                         ),
                       ),
                     ),
@@ -201,21 +346,23 @@ class _GradeCell extends ConsumerWidget {
   final int studentId;
   final int subjectId;
   final int mode;
+  final List<GradeCategory> categories;
+  final SemesterSetting? subjectSetting;
+  final SemesterSetting? globalSetting;
 
   const _GradeCell({
     required this.studentId,
     required this.subjectId,
     required this.mode,
+    required this.categories,
+    required this.subjectSetting,
+    required this.globalSetting,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final key = StudentSubjectKey(studentId, subjectId);
-    final gradesAsync = ref.watch(gradesByStudentSubjectProvider(key));
-    final globalSettingAsync = ref.watch(globalSemesterSettingProvider);
-    final subjectSettingAsync =
-        ref.watch(subjectSemesterSettingProvider(subjectId));
-    final categoriesAsync = ref.watch(effectiveCategoriesProvider(subjectId));
+    // One subscription per student row — O(students) subscriptions
+    final gradesAsync = ref.watch(gradesByStudentProvider(studentId));
 
     return gradesAsync.when(
       loading: () => const SizedBox(
@@ -231,10 +378,12 @@ class _GradeCell extends ConsumerWidget {
           color: Theme.of(context).colorScheme.error,
         ),
       ),
-      data: (grades) {
-        final categories = categoriesAsync.valueOrNull ?? [];
-        final subjectSetting = subjectSettingAsync.valueOrNull;
-        final globalSetting = globalSettingAsync.valueOrNull;
+      data: (allStudentGrades) {
+        // Filter grades for this subject
+        final grades = allStudentGrades
+            .where((g) => g.subjectId == subjectId)
+            .toList();
+
         final w1 = subjectSetting?.firstHalfWeight ??
             globalSetting?.firstHalfWeight ??
             50.0;
@@ -274,10 +423,14 @@ class _GradeCell extends ConsumerWidget {
             : GradeCalculator.formatGradeDetail(grade);
 
         final gradeColor = _gradeColor(grade, context);
+        // U12: Non-color indicator for failing grades (WCAG 1.4.1)
+        final isFailing = grade != null && grade >= 4.67;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: gradeColor?.withOpacity(0.12),
+            color: isFailing
+                ? Theme.of(context).colorScheme.errorContainer.withOpacity(0.3)
+                : gradeColor?.withOpacity(0.12),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(

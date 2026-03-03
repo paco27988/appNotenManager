@@ -7,6 +7,9 @@ part 'grades_dao.g.dart';
 class GradesDao extends DatabaseAccessor<AppDatabase> with _$GradesDaoMixin {
   GradesDao(super.db);
 
+  Stream<List<Grade>> watchByStudent(int studentId) =>
+      (select(grades)..where((t) => t.studentId.equals(studentId))).watch();
+
   Stream<List<Grade>> watchByStudentSubject(int studentId, int subjectId) =>
       (select(grades)
             ..where(
