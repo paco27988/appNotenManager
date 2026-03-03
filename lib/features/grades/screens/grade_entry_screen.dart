@@ -6,17 +6,18 @@ import '../../students/students_provider.dart';
 import '../../subjects/subjects_provider.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/grade_calculator.dart';
+import '../../../core/utils/date_format_helper.dart';
 
 class GradeEntryScreen extends ConsumerStatefulWidget {
   final int studentId;
   final int subjectId;
-  final int? classId;
+  final int classId;
 
   const GradeEntryScreen({
     super.key,
     required this.studentId,
     required this.subjectId,
-    this.classId,
+    required this.classId,
   });
 
   @override
@@ -338,7 +339,7 @@ class _GradeTile extends ConsumerWidget {
         ),
       ),
       title: Text(
-        '${grade.date.day.toString().padLeft(2, '0')}.${grade.date.month.toString().padLeft(2, '0')}.${grade.date.year}',
+        DateFormatHelper.formatGermanDate(grade.date),
         style: Theme.of(context).textTheme.bodyMedium,
       ),
       subtitle: _buildSubtitle(context, cs),
@@ -449,7 +450,7 @@ class _GradeTile extends ConsumerWidget {
         title: const Text('Note löschen'),
         content: Text(
       'Note ${GradeCalculator.formatGradeEntry(grade.value)} '
-      '(${grade.date.day.toString().padLeft(2, '0')}.${grade.date.month.toString().padLeft(2, '0')}.${grade.date.year}) löschen?',
+      '(${DateFormatHelper.formatGermanDate(grade.date)}) löschen?',
     ),
         actions: [
           TextButton(
@@ -465,6 +466,8 @@ class _GradeTile extends ConsumerWidget {
               await ref
                   .read(gradesNotifierProvider.notifier)
                   .deleteGrade(grade.id, studentId, subjectId);
+              // ignore: use_build_context_synchronously
+              if (!context.mounted) return;
             },
             child: const Text('Löschen'),
           ),
@@ -596,7 +599,7 @@ class _GradeDialogState extends ConsumerState<_GradeDialog> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
-                'Datum: ${_date.day.toString().padLeft(2, '0')}.${_date.month.toString().padLeft(2, '0')}.${_date.year}',
+                'Datum: ${DateFormatHelper.formatGermanDate(_date)}',
               ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
@@ -606,7 +609,7 @@ class _GradeDialogState extends ConsumerState<_GradeDialog> {
                   firstDate: DateTime(2000),
                   lastDate: DateTime.now(),
                 );
-                if (picked != null) setState(() => _date = picked);
+                if (picked != null && mounted) setState(() => _date = picked);
               },
             ),
             const Divider(),
@@ -680,6 +683,8 @@ class _GradeDialogState extends ConsumerState<_GradeDialog> {
               ),
               maxLines: 2,
               maxLength: 500,
+              buildCounter: (context, {required currentLength, required isFocused, maxLength}) =>
+                  isFocused ? Text('$currentLength/${maxLength ?? 500}', style: Theme.of(context).textTheme.bodySmall) : null,
             ),
           ],
         ),

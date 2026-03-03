@@ -207,6 +207,16 @@ void main() {
           isNull,
         );
       });
+
+      test('returns null when no grades match any category (totalUsedWeight == 0)', () {
+        final cats = [
+          const GradeCategory(id: 1, name: 'A', weightPercent: 60.0, colorHex: '#000', icon: 'label'),
+          const GradeCategory(id: 2, name: 'B', weightPercent: 40.0, colorHex: '#000', icon: 'label'),
+        ];
+        // grade has categoryId: 99, which matches no category
+        final grade = Grade(id: 1, studentId: 1, subjectId: 1, categoryId: 99, value: 3.0, factor: 1.0, semester: 1, date: DateTime(2024, 3, 1), comment: '');
+        expect(GradeCalculator.calculateSemesterGrade([grade], cats, 1), isNull);
+      });
     });
 
     // ── applySubjectOverrides ───────────────────────────────────────────────

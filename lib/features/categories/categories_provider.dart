@@ -28,10 +28,11 @@ class CategoriesNotifier extends AsyncNotifier<List<GradeCategory>> {
     String colorHex,
     String icon,
   ) async {
+    final safeWeight = weightPercent.clamp(0.0, 100.0);
     await _db.categoriesDao.create(
       GradeCategoriesCompanion.insert(
         name: name,
-        weightPercent: weightPercent,
+        weightPercent: safeWeight,
         colorHex: Value(colorHex),
         icon: Value(icon),
       ),
@@ -46,11 +47,12 @@ class CategoriesNotifier extends AsyncNotifier<List<GradeCategory>> {
     String colorHex,
     String icon,
   ) async {
+    final safeWeight = weightPercent.clamp(0.0, 100.0);
     await _db.categoriesDao.update_(
       GradeCategoriesCompanion(
         id: Value(id),
         name: Value(name),
-        weightPercent: Value(weightPercent),
+        weightPercent: Value(safeWeight),
         colorHex: Value(colorHex),
         icon: Value(icon),
       ),

@@ -232,6 +232,105 @@ void main() {
     expect(await db.classesDao.getById(classId), equals(null));
   });
 
+  // ── T3: SettingsDao.upsertForSubject idempotency ──────────────────────────
+
+  test('upsertForSubject is idempotent: second call updates, does not insert', () async {
+    final subjectId = await db.into(db.subjects).insert(
+      SubjectsCompanion.insert(name: 'Mathe'),
+    );
+    await db.settingsDao.upsertForSubject(subjectId, 60.0, 40.0);
+    await db.settingsDao.upsertForSubject(subjectId, 70.0, 30.0);
+    final all = await db.settingsDao.getAll();
+    final subjectRows = all.where((s) => s.subjectId == subjectId).toList();
+    expect(subjectRows.length, 1);
+    expect(subjectRows.first.firstHalfWeight, closeTo(70.0, 0.001));
+    expect(subjectRows.first.secondHalfWeight, closeTo(30.0, 0.001));
+  });
+
+  // ── T4: Backup round-trip with non-empty subjectCategoryOverrides ─────────
+
+  test('Backup round-trip preserves subjectCategoryOverrides', () async {
+    final defaultCats = await db.categoriesDao.getAll();
+    final catId = defaultCats.first.id;
+    final subjectId = await db.into(db.subjects).insert(
+      SubjectsCompanion.insert(name: 'Physik'),
+    );
+    await db.subjectCategoryOverridesDao.upsert(subjectId, catId, false, 75.0);
+
+    final service = BackupService(db);
+    final data = await service.exportData();
+    final overridesInPayload = data['subjectCategoryOverrides'] as List<dynamic>;
+    expect(overridesInPayload.length, 1);
+    expect(overridesInPayload.first['isActive'], isFalse);
+
+    await service.importData(data);
+    final overridesAfter = await db.subjectCategoryOverridesDao.getAll();
+    expect(overridesAfter.length, 1);
+    expect(overridesAfter.first.isActive, isFalse);
+    expect(overridesAfter.first.weightOverride, closeTo(75.0, 0.001));
+  });
+
+  // ── T5: importData with absent subjectCategoryOverrides key ──────────────
+
+  test('importData succeeds when subjectCategoryOverrides key is absent', () async {
+    final data = {
+      'version': 1,
+      'exportedAt': '2024-01-01T00:00:00.000',
+      'categories': <dynamic>[],
+      'classes': <dynamic>[],
+      'subjects': <dynamic>[],
+      'students': <dynamic>[],
+      'classSubjects': <dynamic>[],
+      'grades': <dynamic>[],
+      'semesterSettings': <dynamic>[],
+    };
+    await expectLater(BackupService(db).importData(data), completes);
+  });
+
+  // ── T6: deleteClass cascade with multiple subjects ────────────────────────
+
+  test('deleteClass cascade removes all classSubjects when multiple subjects assigned', () async {
+    final classId = await db.into(db.classes).insert(
+      ClassesCompanion.insert(name: '11c', schoolYear: '2024/25'),
+    );
+    final sub1 = await db.into(db.subjects).insert(SubjectsCompanion.insert(name: 'Mathe'));
+    final sub2 = await db.into(db.subjects).insert(SubjectsCompanion.insert(name: 'Deutsch'));
+    await db.classesDao.assignSubject(classId, sub1);
+    await db.classesDao.assignSubject(classId, sub2);
+
+    await db.transaction(() async {
+      final students = await db.studentsDao.getByClass(classId);
+      for (final s in students) {
+        await db.gradesDao.deleteByStudent(s.id);
+      }
+      await db.studentsDao.deleteByClass(classId);
+      final subs = await db.classesDao.getSubjectsForClass(classId);
+      for (final sub in subs) {
+        await db.classesDao.removeSubject(classId, sub.id);
+      }
+      await db.classesDao.deleteById(classId);
+    });
+
+    expect(await db.classesDao.getSubjectsForClass(classId), isEmpty);
+    expect(await db.classesDao.getById(classId), equals(null));
+  });
+
+  // ── T7: SubjectCategoryOverridesDao.upsert idempotency ───────────────────
+
+  test('subjectCategoryOverrides upsert is idempotent', () async {
+    final subjectId = await db.into(db.subjects).insert(SubjectsCompanion.insert(name: 'Bio'));
+    final defaultCats = await db.categoriesDao.getAll();
+    final catId = defaultCats.first.id;
+
+    await db.subjectCategoryOverridesDao.upsert(subjectId, catId, true, 60.0);
+    await db.subjectCategoryOverridesDao.upsert(subjectId, catId, false, 80.0);
+    final all = await db.subjectCategoryOverridesDao.getAll();
+    final rows = all.where((r) => r.subjectId == subjectId && r.categoryId == catId).toList();
+    expect(rows.length, 1);
+    expect(rows.first.isActive, isFalse);
+    expect(rows.first.weightOverride, closeTo(80.0, 0.001));
+  });
+
   // ── FK Enforcement ────────────────────────────────────────────────────────
 
   test('FK enforcement: grade with invalid studentId throws', () async {

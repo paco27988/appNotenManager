@@ -61,13 +61,11 @@ void main() {
       expect(() => svc.validateBackupData(_validData()), returnsNormally);
     });
 
-    test('version > 1 throws FormatException', () {
+    test('version > 1 does not throw FormatException (forward compat)', () {
       final data = _validData();
       data['version'] = 2;
-      expect(
-        () => _service().validateBackupData(data),
-        throwsA(isA<FormatException>()),
-      );
+      // version 2 should NOT throw anymore — forward compat
+      expect(() => _service().validateBackupData(data), returnsNormally);
     });
 
     test('version == 0 throws FormatException', () {

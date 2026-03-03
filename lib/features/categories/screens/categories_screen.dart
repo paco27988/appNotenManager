@@ -79,31 +79,6 @@ class CategoriesScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                )
-              else
-                Material(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Gesamtgewichtung: ${totalWeight.toStringAsFixed(1)}%',
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               Expanded(
                 child: ListView.builder(
@@ -278,6 +253,8 @@ class _CategoryCard extends ConsumerWidget {
               await ref
                   .read(categoriesNotifierProvider.notifier)
                   .deleteCategory(category.id);
+              // ignore: use_build_context_synchronously
+              if (!context.mounted) return;
             },
             child: const Text('Löschen'),
           ),
@@ -388,7 +365,10 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                 final isSelected = _color == opt.$2;
                 return Tooltip(
                   message: opt.$1,
-                  child: GestureDetector(
+                  child: Semantics(
+                    label: '${opt.$1}${_color == opt.$2 ? ", ausgewählt" : ""}',
+                    button: true,
+                    child: GestureDetector(
                     onTap: () => setState(() => _color = opt.$2),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
@@ -417,6 +397,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                           ? const Icon(Icons.check, color: Colors.white, size: 20)
                           : null,
                     ),
+                  ),
                   ),
                 );
               }).toList(),

@@ -8,6 +8,19 @@ import '../../../core/database/app_database.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  void _showAddSubjectDialogFromContext(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (_) => _AddSubjectDialog(
+        onSave: (name) async {
+          await ref
+              .read(subjectsNotifierProvider.notifier)
+              .addSubject(name);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final globalSettingAsync = ref.watch(globalSemesterSettingProvider);
@@ -50,10 +63,19 @@ class SettingsScreen extends ConsumerWidget {
             error: (e, _) => const Text('Ein Fehler ist aufgetreten'),
             data: (subjects) {
               if (subjects.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Noch keine Fächer vorhanden.',
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Noch keine Fächer vorhanden.'),
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        onPressed: () => _showAddSubjectDialogFromContext(context, ref),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Erstes Fach hinzufügen'),
+                      ),
+                    ],
                   ),
                 );
               }
@@ -339,6 +361,8 @@ class _SubjectsManager extends ConsumerWidget {
               await ref
                   .read(subjectsNotifierProvider.notifier)
                   .deleteSubject(subject.id);
+              // ignore: use_build_context_synchronously
+              if (!context.mounted) return;
             },
             child: const Text('Löschen'),
           ),

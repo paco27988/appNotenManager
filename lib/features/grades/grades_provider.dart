@@ -25,6 +25,12 @@ final gradesByStudentSubjectProvider =
   return db.gradesDao.watchByStudentSubject(key.studentId, key.subjectId);
 });
 
+final gradesByStudentProvider =
+    StreamProvider.family<List<Grade>, int>((ref, studentId) {
+  final db = ref.watch(databaseProvider);
+  return db.gradesDao.watchByStudent(studentId);
+});
+
 final gradesNotifierProvider =
     AsyncNotifierProvider<GradesNotifier, void>(GradesNotifier.new);
 

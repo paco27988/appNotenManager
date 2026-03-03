@@ -24,7 +24,9 @@ class SettingsNotifier extends AsyncNotifier<void> {
   AppDatabase get _db => ref.read(databaseProvider);
 
   Future<void> updateGlobal(double first, double second) async {
-    await _db.settingsDao.upsertGlobal(first, second);
+    final safeFirst = first.clamp(0.0, 100.0);
+    final safeSecond = second.clamp(0.0, 100.0);
+    await _db.settingsDao.upsertGlobal(safeFirst, safeSecond);
   }
 
   Future<void> updateForSubject(
@@ -32,7 +34,9 @@ class SettingsNotifier extends AsyncNotifier<void> {
     double first,
     double second,
   ) async {
-    await _db.settingsDao.upsertForSubject(subjectId, first, second);
+    final safeFirst = first.clamp(0.0, 100.0);
+    final safeSecond = second.clamp(0.0, 100.0);
+    await _db.settingsDao.upsertForSubject(subjectId, safeFirst, safeSecond);
   }
 
   Future<void> resetSubjectOverride(int subjectId) async {

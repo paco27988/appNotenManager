@@ -192,6 +192,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     setState(() => _isExporting = true);
     try {
       await ref.read(backupServiceProvider).exportAndShare();
+      _showSnackBar('Export erfolgreich geteilt');
     } catch (_) {
       _showSnackBar('Export fehlgeschlagen', isError: true);
     } finally {
@@ -225,6 +226,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
     await _import();
   }
 
